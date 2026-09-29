@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="hair-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="eye-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Circle Background -->
+  <circle cx="64" cy="64" r="62" fill="url(#bg-grad)" />
+  <circle cx="64" cy="64" r="58" fill="#0f172a" />
+
+  <!-- Back Hair -->
+  <path d="M30 60 C26 90 38 108 50 112 C78 112 90 108 98 60 Z" fill="url(#hair-grad)" />
+
+  <!-- Neck & Clothes -->
+  <path d="M58 84 L70 84 L72 98 L56 98 Z" fill="#fed7aa" />
+  <path d="M46 96 C54 94 74 94 82 96 L88 120 C76 124 52 124 40 120 Z" fill="#3b82f6" />
+  <path d="M58 96 L64 104 L70 96 Z" fill="#38bdf8" />
+
+  <!-- Face -->
+  <path d="M42 56 C42 80 52 92 64 92 C76 92 86 80 86 56 C86 42 76 34 64 34 C52 34 42 42 42 56 Z" fill="#ffedd5" />
+
+  <!-- Blush -->
+  <ellipse cx="49" cy="74" rx="4" ry="2.2" fill="#fb7185" opacity="0.6" />
+  <ellipse cx="79" cy="74" rx="4" ry="2.2" fill="#fb7185" opacity="0.6" />
+
+  <!-- Eyes -->
+  <!-- Left Eye -->
+  <ellipse cx="52" cy="65" rx="5" ry="7" fill="url(#eye-grad)" />
+  <circle cx="50.5" cy="62.5" r="2.2" fill="#ffffff" />
+  <circle cx="53.5" cy="67.5" r="1.1" fill="#ffffff" />
+  <path d="M47 57 Q52 55 57 58" stroke="#334155" stroke-width="1.8" fill="none" stroke-linecap="round" />
+
+  <!-- Right Eye -->
+  <ellipse cx="76" cy="65" rx="5" ry="7" fill="url(#eye-grad)" />
+  <circle cx="74.5" cy="62.5" r="2.2" fill="#ffffff" />
+  <circle cx="77.5" cy="67.5" r="1.1" fill="#ffffff" />
+  <path d="M71 58 Q76 55 81 57" stroke="#334155" stroke-width="1.8" fill="none" stroke-linecap="round" />
+
+  <!-- Sweet Smile -->
+  <path d="M60 78 Q64 83 68 78" stroke="#f43f5e" stroke-width="1.8" fill="none" stroke-linecap="round" />
+
+  <!-- Cute Front Bangs & Side Locks -->
+  <path d="M40 50 C40 30 52 24 64 24 C76 24 88 30 88 50 C84 46 80 44 76 46 C70 42 66 42 62 48 C58 42 52 42 48 46 C44 44 42 47 40 50 Z" fill="url(#hair-grad)" />
+  <!-- Hair Clips / Stars -->
+  <path d="M41 42 L43 45 L46 45 L44 47 L45 50 L42 48 L40 50 L41 47 L38 45 L41 45 Z" fill="#fde047" />
+
+  <!-- Cute AI Headset -->
+  <path d="M38 48 C38 30 50 18 64 18 C78 18 90 30 90 48" stroke="#0ea5e9" stroke-width="3.5" fill="none" stroke-linecap="round" />
+  <!-- Left Headphone -->
+  <rect x="33" y="52" width="7" height="15" rx="3.5" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" />
+  <!-- Right Headphone -->
+  <rect x="88" y="52" width="7" height="15" rx="3.5" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" />
+  <!-- Headset Mic -->
+  <path d="M88 64 Q85 80 72 82" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round" />
+  <circle cx="71" cy="82" r="2.5" fill="#ec4899" />
+</svg>

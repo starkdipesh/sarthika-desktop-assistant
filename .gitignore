@@ -212,7 +212,22 @@ tempCodeRunnerFile.py
 # Marimo
 marimo/_static/
 marimo/_lsp/
-__marimo__/
+# Models and weights
+*.gguf
+*.safetensors
+*.bin
 
-# Streamlit
-.streamlit/secrets.toml
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# Sensitive / environment files
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.toml
