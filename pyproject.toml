@@ -39,6 +39,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.3.0",
     "mypy>=1.9.0",
+    "pyinstaller>=6.5.0",
 ]
 
 [project.scripts]
@@ -50,6 +51,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["src", "."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
