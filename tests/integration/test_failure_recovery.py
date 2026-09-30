@@ -18,6 +18,7 @@ Specifically verifies all 12 failure modes required by Milestone 8:
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -342,9 +343,11 @@ def test_failure_model_path_removed_or_moved(db_manager: DatabaseManager, tmp_pa
     manager = LlamaServerManager(log_dir=tmp_path / "logs")
     model_service = ModelService(settings_service=settings_service, server_manager=manager)
 
-    fake_exec = tmp_path / "llama-server"
+    exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+    fake_exec = tmp_path / exec_name
     fake_exec.write_text("#!/bin/sh\n")
     fake_exec.chmod(0o755)
+
 
     missing_model = tmp_path / "missing_model.gguf"
 

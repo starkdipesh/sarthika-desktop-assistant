@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -80,7 +81,8 @@ def test_validate_executable_path_nonexistent(model_service: ModelService) -> No
 
 def test_validate_executable_path_valid(model_service: ModelService, tmp_path: Path) -> None:
     """Verify valid executable passes validation."""
-    fake_exec = tmp_path / "llama-server"
+    exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+    fake_exec = tmp_path / exec_name
     fake_exec.write_text("#!/bin/sh\necho 'llama.cpp version 1.0'\n")
     fake_exec.chmod(fake_exec.stat().st_mode | 0o111)
 
@@ -92,9 +94,11 @@ def test_start_configured_server_fails_when_model_removed(
     model_service: ModelService, tmp_path: Path
 ) -> None:
     """Verify start_configured_server raises ModelValidationError if the model file was deleted/moved."""
-    fake_exec = tmp_path / "llama-server"
+    exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+    fake_exec = tmp_path / exec_name
     fake_exec.write_text("#!/bin/sh\n")
     fake_exec.chmod(0o755)
+
 
     fake_model = tmp_path / "model.gguf"
     fake_model.write_bytes(b"GGUF_HEADER_DATA" * 100)

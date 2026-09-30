@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -22,9 +23,11 @@ def server_manager(tmp_path: Path) -> LlamaServerManager:
 def sample_config(tmp_path: Path) -> ModelConfiguration:
     fake_model = tmp_path / "model.gguf"
     fake_model.write_bytes(b"GGUF" * 300)
-    fake_exec = tmp_path / "llama-server"
+    exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+    fake_exec = tmp_path / exec_name
     fake_exec.write_text("#!/bin/sh\n")
     fake_exec.chmod(0o755)
+
 
     return ModelConfiguration(
         model_path=str(fake_model),

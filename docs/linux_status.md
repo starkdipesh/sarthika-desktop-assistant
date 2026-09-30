@@ -37,7 +37,7 @@ sudo apt-get install -y \
 ### B. Set Up Python 3.11 Environment
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/sarthika-code.git
+git clone https://github.com/starkdipesh/sarthika-desktop-assistant
 cd sarthika-code
 
 # Create virtual environment

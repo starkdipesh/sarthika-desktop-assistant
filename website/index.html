@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sarthika Code — Private, Local-First Desktop AI Coding Assistant</title>
+  <meta name="description" content="A private, local-first AI coding assistant designed to run without a GPU. No API keys, no telemetry, and your selected code stays on your device.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/avatar.svg">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <span class="brand-logo">⚡</span>
+        <span class="brand-text">Sarthika Code</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#hardware">Hardware</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#benchmarks">Benchmarks</a>
+        <a href="#limitations">Limitations</a>
+        <a href="#installation" class="nav-btn">Install v0.1</a>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-container">
+      <div class="badge-pill">Version 0.1 • Open Source • 100% Local Inference</div>
+      <h1 class="hero-title">A private, local AI coding assistant that runs on your computer.</h1>
+      <p class="hero-subtitle">
+        Local-first AI coding assistant designed to run without a GPU.
+        No API key required for local inference. Your selected code stays on your device.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#installation" class="btn btn-primary">Download for Windows (64-bit)</a>
+        <a href="https://github.com/starkdipesh/sarthika-desktop-assistant" class="btn btn-secondary" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+
+      <div class="hero-callout">
+        <span class="callout-icon">🛡️</span>
+        <span>Experimental software. Always review and test generated code. Zero cloud inference, zero accounts, and zero telemetry.</span>
+      </div>
+
+      <!-- App Interface Preview Mockup -->
+      <div class="ui-mockup">
+        <div class="mockup-header">
+          <div class="mockup-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="mockup-title">Sarthika Code v0.1 — Explain Code Workflow (Qwen2.5-Coder 3B • Q4_K_M)</span>
+          <span class="mockup-status">🟢 Model Ready • 127.0.0.1:8080</span>
+        </div>
+        <div class="mockup-body">
+          <div class="mockup-sidebar">
+            <div class="sidebar-item active">💬 QuickSort Optimization</div>
+            <div class="sidebar-item">💬 Laravel Model Accessors</div>
+            <div class="sidebar-item">💬 Async Rate Limiter</div>
+            <div class="sidebar-separator">Workflows</div>
+            <div class="sidebar-workflow active-wf">🔍 Explain Code</div>
+            <div class="sidebar-workflow">⚡ Refactor Code</div>
+            <div class="sidebar-workflow">🧪 Write Unit Tests</div>
+            <div class="sidebar-workflow">🛠️ Debug & Fix</div>
+          </div>
+          <div class="mockup-chat">
+            <div class="chat-msg user-msg">
+              <span class="msg-author">You (with context: sort.py)</span>
+              <p>Can you refactor this bubble sort function into an in-place quicksort algorithm?</p>
+            </div>
+            <div class="chat-msg asst-msg">
+              <span class="msg-author">Sarthika Assistant (Local Qwen2.5-Coder 3B)</span>
+              <p>Here is an in-place quicksort implementation with an explanation of partitioning:</p>
+              <pre><code>def quicksort(arr, low=0, high=None):
+    if high is None:
+        high = len(arr) - 1
+    if low &lt; high:
+        pi = partition(arr, low, high)
+        quicksort(arr, low, pi - 1)
+        quicksort(arr, pi + 1, high)
+    return arr</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product & Local-First Philosophy -->
+  <section class="section" id="philosophy">
+    <div class="container">
+      <div class="section-header">
+        <h2>Why Local-First?</h2>
+        <p>Your source code represents proprietary intellectual property and personal engineering craft. It should never be broadcast to third-party cloud servers.</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h3>Zero Cloud Inference</h3>
+          <p>Model inference runs entirely on your CPU via local loopback (<code>127.0.0.1</code>). No source code, context files, or prompts ever touch remote infrastructure.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🚫</div>
+          <h3>Zero Telemetry & Accounts</h3>
+          <p>No account sign-ups, no subscriptions, no tracking beacons, no analytics collectors, and no advertising networks. It operates completely offline.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💻</div>
+          <h3>Designed for Ordinary Laptops</h3>
+          <p>Optimized for efficient 4-bit quantized models that execute cleanly on multi-core consumer x86_64 CPUs without requiring an expensive NVIDIA GPU.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <h3>Non-Destructive & Safe</h3>
+          <p>Never executes terminal commands, never executes generated code, never edits your project files silently, and never runs automated Git operations.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features -->
+  <section class="section bg-alt" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>Features Designed for Developers</h2>
+        <p>A focused desktop tool tailored for practical development workflows.</p>
+      </div>
+
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>Curated Task Workflows</h3>
+            <p>Select specialized prompts built for day-to-day coding: Explain Code, Refactor Code, Write Unit Tests, Debug & Fix, Laravel Component Draft, Python Component Draft, and Implementation Planning.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>Explicit Read-Only Context Screening</h3>
+            <p>You choose exactly which files to attach as context. The built-in security scanner automatically blocks sensitive secrets, <code>.env</code> files, private SSH keys, and bloated directories (<code>node_modules</code>).</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>Token Budgeting & Capacity Gauges</h3>
+            <p>Real-time context budgeting estimates prompt and context tokens before generation, warning you if file attachments approach model context limits.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>Persistent Local Conversations</h3>
+            <p>All chats, messages, and settings are stored in local SQLite databases on your machine. Export conversations anytime as clean Markdown or Plaintext files.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>Offline Mock & Demo Mode</h3>
+            <p>Explore the entire desktop application, editor, syntax highlighter, and workflow cards offline without needing to download model weights first.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-text">
+            <h3>System Diagnostics & Safe Logs</h3>
+            <p>Inspect CPU, RAM, process uptime, and generation metrics with a single click. Diagnostic reports automatically redact user home directory paths for private sharing.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <h2>How It Works</h2>
+        <p>Simple, decoupled architecture with transparent local loopback boundaries.</p>
+      </div>
+
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <span class="step-num">1</span>
+          <h4>Desktop UI (PySide6)</h4>
+          <p>Clean desktop application with dedicated editor, sidebar history, and context panels.</p>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <span class="step-num">2</span>
+          <h4>Domain & Security</h4>
+          <p>Prompt builder fences user code; security scanner verifies context files are safe.</p>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <span class="step-num">3</span>
+          <h4>Loopback HTTP</h4>
+          <p>Communicates strictly via localhost (<code>127.0.0.1</code>) using Server-Sent Events (SSE).</p>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <span class="step-num">4</span>
+          <h4>llama-server Subprocess</h4>
+          <p>Child process loads your user-selected GGUF model and performs CPU inference.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Supported Hardware -->
+  <section class="section bg-alt" id="hardware">
+    <div class="container">
+      <div class="section-header">
+        <h2>Hardware Guidance</h2>
+        <p>Realistic hardware recommendations for CPU inference.</p>
+      </div>
+
+      <div class="hardware-table-wrapper">
+        <table class="hardware-table">
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>RAM</th>
+              <th>Processor</th>
+              <th>Recommended Context</th>
+              <th>Expected Speed</th>
+              <th>Guidance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Best-Effort</strong></td>
+              <td>8 GB RAM</td>
+              <td>x86_64 CPU (AVX2)</td>
+              <td>2048 tokens</td>
+              <td>5–10 tokens/sec</td>
+              <td>Low-memory mode. Close background browser tabs and heavy IDEs during inference.</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>Recommended</strong></td>
+              <td>16 GB RAM</td>
+              <td>Quad-core or Octa-core CPU</td>
+              <td>4096 tokens</td>
+              <td>8–15 tokens/sec</td>
+              <td>Comfortable development experience for coding workflows.</td>
+            </tr>
+            <tr>
+              <td><strong>Optimal</strong></td>
+              <td>32 GB+ RAM / GPU</td>
+              <td>Modern 8+ Core CPU / Dedicated GPU</td>
+              <td>8192+ tokens</td>
+              <td>15–30+ tokens/sec</td>
+              <td>High prompt processing throughput with extended context windows.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Model Setup -->
+  <section class="section" id="model-setup">
+    <div class="container">
+      <div class="section-header">
+        <h2>Model & Engine Setup</h2>
+        <p>Download your model weights directly from verified open-source sources.</p>
+      </div>
+
+      <div class="setup-grid">
+        <div class="setup-card">
+          <span class="setup-badge">Recommended Model</span>
+          <h3>Qwen2.5-Coder 3B Instruct</h3>
+          <p>A compact, highly capable open weights model specifically fine-tuned for code explanation, refactoring, and unit test generation.</p>
+          <ul class="setup-specs">
+            <li><strong>Quantization:</strong> Q4_K_M (4-bit Medium)</li>
+            <li><strong>File Size:</strong> ~1.9 GB</li>
+            <li><strong>Format:</strong> Standard <code>.gguf</code></li>
+            <li><strong>License:</strong> Apache 2.0 (by Qwen Team)</li>
+          </ul>
+        </div>
+
+        <div class="setup-card">
+          <span class="setup-badge">Inference Engine</span>
+          <h3>llama.cpp (llama-server)</h3>
+          <p>The standard C++ inference engine for local LLMs, maintained by Georgi Gerganov and the open-source community.</p>
+          <ul class="setup-specs">
+            <li><strong>Windows Binary:</strong> <code>llama-server.exe</code></li>
+            <li><strong>Connection:</strong> Local loopback (<code>http://127.0.0.1:8080</code>)</li>
+            <li><strong>Source:</strong> Official llama.cpp GitHub Releases</li>
+            <li><strong>License:</strong> MIT License</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy & Security -->
+  <section class="section bg-alt" id="privacy">
+    <div class="container">
+      <div class="section-header">
+        <h2>Privacy & Security Guarantees</h2>
+        <p>Architectural commitments you can audit in the source code.</p>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <h4>No Cloud Egress</h4>
+          <p>Network sockets are strictly bound to <code>127.0.0.1</code>. The application cannot transmit data to external IP addresses or domains.</p>
+        </div>
+        <div class="card">
+          <h4>No Silent Modifying</h4>
+          <p>Sarthika Code never modifies your source files, never creates commits, and never alters project structures. Generated code is output in the chat for your review.</p>
+        </div>
+        <div class="card">
+          <h4>Sensitive-File Scanner</h4>
+          <p>Files matching patterns like <code>.env*</code>, <code>id_rsa</code>, <code>*.pem</code>, <code>*.key</code>, or directory names like <code>node_modules</code> are blocked from entering prompt context.</p>
+        </div>
+        <div class="card">
+          <h4>Local Data Ownership</h4>
+          <p>Conversations and settings reside in a local SQLite file in your user profile. You can delete individual chats or purge all records at any time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Limitations -->
+  <section class="section" id="limitations">
+    <div class="container">
+      <div class="section-header">
+        <h2>Honest Product Limitations</h2>
+        <p>What Version 0.1 cannot do and where human review is essential.</p>
+      </div>
+
+      <div class="limitations-box">
+        <ul>
+          <li><strong>Not AGI or Autonomous:</strong> Sarthika Code does not possess human-level intelligence or full autonomy. It is an assistive tool to accelerate coding tasks.</li>
+          <li><strong>Output Requires Human Review:</strong> Model responses can be incorrect, out of date, or produce invalid syntax. Always test and verify generated code.</li>
+          <li><strong>No Terminal or Tool Execution:</strong> Version 0.1 does not execute shell scripts, run compilers, execute tests, or install packages.</li>
+          <li><strong>No Web Browsing or Live APIs:</strong> The model cannot browse the internet or access external documentation APIs.</li>
+          <li><strong>Context Window Limits:</strong> 3B models running on laptops are bounded by 2048 to 4096 tokens. Large multi-file repositories cannot be ingested in a single turn.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benchmarks -->
+  <section class="section bg-alt" id="benchmarks">
+    <div class="container">
+      <div class="section-header">
+        <h2>Transparent Benchmark Methodology</h2>
+        <p>Measure real performance on your exact CPU using open benchmark tooling.</p>
+      </div>
+
+      <div class="benchmark-info">
+        <p>Sarthika Code includes a reproducible benchmark harness (<code>scripts/benchmark_local.py</code>) featuring <strong>50 standardized engineering tasks</strong> across 5 categories: Laravel tasks, Python tasks, debugging cases, code explanations, and implementation planning.</p>
+        <p>To run benchmarks locally on your computer:</p>
+        <pre class="code-block"><code># Run local benchmark against your running llama-server:
+python scripts/benchmark_local.py --server-url http://127.0.0.1:8080
+
+# Or run with the offline mock provider:
+python scripts/benchmark_local.py --mock</code></pre>
+        <p class="benchmark-note">Results are saved strictly on your local disk in <code>benchmarks/</code> as structured JSON. No data is sent to external servers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation -->
+  <section class="section" id="installation">
+    <div class="container">
+      <div class="section-header">
+        <h2>Installation & Getting Started</h2>
+        <p>Get up and running on Windows or set up from source on Linux.</p>
+      </div>
+
+      <div class="install-tabs">
+        <div class="tab-content">
+          <h3>Windows Standalone Release (Recommended)</h3>
+          <ol class="install-steps">
+            <li>Download the latest release: <code>SarthikaCode-0.1.0-win64.zip</code>.</li>
+            <li>Extract to <code>C:\Users\&lt;YourUser&gt;\AppData\Local\Programs\SarthikaCode\</code>.</li>
+            <li>Double-click <code>SarthikaCode.exe</code> to launch.</li>
+            <li>Configure your local <code>llama-server.exe</code> and <code>.gguf</code> model file in the setup screen.</li>
+          </ol>
+          <div class="install-note">Python is <strong>not required</strong> for packaged Windows end users.</div>
+        </div>
+
+        <div class="tab-content">
+          <h3>Developer Setup (Linux & Source)</h3>
+          <pre class="code-block"><code>git clone https://github.com/your-username/sarthika-code.git
+cd sarthika-code
+python3.11 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+python run.py</code></pre>
+          <div class="install-note">Pre-packaged Linux desktop packages (AppImage/deb) are planned for future releases.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap -->
+  <section class="section bg-alt" id="roadmap">
+    <div class="container">
+      <div class="section-header">
+        <h2>Roadmap & Future Direction</h2>
+        <p>Planned enhancements for Version 0.2 and beyond.</p>
+      </div>
+
+      <div class="roadmap-grid">
+        <div class="roadmap-item completed">
+          <span class="roadmap-badge">v0.1 Completed</span>
+          <h4>Version 0.1 Core Foundation</h4>
+          <p>Local inference with GGUF/llama.cpp, offline mock mode, curated workflows, context file security screening, local SQLite persistence, diagnostics, and Windows packaging.</p>
+        </div>
+        <div class="roadmap-item planned">
+          <span class="roadmap-badge">v0.2 Planned</span>
+          <h4>Version 0.2 Enhancements</h4>
+          <p>Linux packaging (AppImage), cross-platform dark/light themes, expanded context budgets, multi-turn diff view, and localized prompt workflows.</p>
+        </div>
+        <div class="roadmap-item planned">
+          <span class="roadmap-badge">v0.3 Future</span>
+          <h4>Version 0.3 Capabilities</h4>
+          <p>Local vector embeddings using purely local models, multi-file code workspace indexer, and custom workflow prompt templates.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <span class="brand-logo">⚡</span>
+        <strong>Sarthika Code</strong>
+        <p>A private, local AI coding assistant that runs entirely on your computer.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/your-username/sarthika-code" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="../docs/privacy.md">Privacy Policy</a>
+        <a href="../docs/limitations.md">Limitations</a>
+        <a href="../docs/architecture.md">Architecture</a>
+        <a href="../LICENSE">License (Apache-2.0)</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>Licensed under the Apache License 2.0. Model weights carry their own individual licenses. llama.cpp is licensed under MIT.</p>
+      <p class="disclaimer">Experimental software. Always review and test generated code before using it in production systems.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

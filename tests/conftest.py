@@ -23,6 +23,9 @@ from sarthika_code.storage.database import DatabaseManager
 def configure_headless_qt() -> None:
     """Ensure Qt runs headlessly in testing environments without an X server."""
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    os.environ["NO_AT_BRIDGE"] = "1"
+    os.environ["QT_ACCESSIBILITY"] = "0"
+
 
 
 @pytest.fixture

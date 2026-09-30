@@ -10,6 +10,7 @@ Verifies:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -40,8 +41,10 @@ def server_integration_env(tmp_path: Path, db_manager: DatabaseManager) -> dict[
     model_file.parent.mkdir(parents=True, exist_ok=True)
     model_file.write_bytes(b"GGUF_MAGIC_HEADER" * 100)
 
-    exec_file = tmp_path / "bin" / "llama-server"
+    exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+    exec_file = tmp_path / "bin" / exec_name
     exec_file.parent.mkdir(parents=True, exist_ok=True)
+
     exec_file.write_text("#!/bin/sh\necho 'llama.cpp v1.0'\n")
     exec_file.chmod(0o755)
 
