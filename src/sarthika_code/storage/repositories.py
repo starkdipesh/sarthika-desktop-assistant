@@ -10,7 +10,12 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sarthika_code.storage.models import ChatModel, MessageModel, SettingModel
+from sarthika_code.storage.models import (
+    ChatModel,
+    MessageModel,
+    SelectedFileContextModel,
+    SettingModel,
+)
 
 
 class SettingsRepository:
@@ -89,6 +94,15 @@ class ChatRepository:
         chat.updated_at = datetime.now(UTC)
         return True
 
+    def update_workflow(self, session: Session, chat_id: str, workflow: str) -> bool:
+        """Update the workflow identifier of a conversation."""
+        chat = session.get(ChatModel, chat_id)
+        if chat is None:
+            return False
+        chat.workflow = workflow
+        chat.updated_at = datetime.now(UTC)
+        return True
+
     def touch(self, session: Session, chat_id: str) -> None:
         """Bump the updated_at timestamp to move the chat to top of list."""
         chat = session.get(ChatModel, chat_id)
@@ -102,6 +116,14 @@ class ChatRepository:
             return False
         session.delete(chat)
         return True
+
+    def delete_all(self, session: Session) -> int:
+        """Delete all chats, cascading to messages and file context records. Returns count."""
+        chats = list(session.execute(select(ChatModel)).scalars().all())
+        count = len(chats)
+        for chat in chats:
+            session.delete(chat)
+        return count
 
 
 class MessageRepository:
@@ -192,3 +214,60 @@ class MessageRepository:
             return last_msg
 
         return None
+
+
+class SelectedFileContextRepository:
+    """Repository handling persistence of user-selected file contexts."""
+
+    def create(
+        self,
+        session: Session,
+        context_id: str,
+        chat_id: str,
+        file_path: str,
+        display_name: str,
+        language: str,
+        content: str,
+        byte_size: int,
+        line_start: int | None = None,
+        line_end: int | None = None,
+    ) -> SelectedFileContextModel:
+        """Persist a new selected file context record."""
+        record = SelectedFileContextModel(
+            id=context_id,
+            chat_id=chat_id,
+            file_path=file_path,
+            display_name=display_name,
+            language=language,
+            content=content,
+            byte_size=byte_size,
+            line_start=line_start,
+            line_end=line_end,
+            created_at=datetime.now(UTC),
+        )
+        session.add(record)
+        return record
+
+    def list_by_chat(self, session: Session, chat_id: str) -> list[SelectedFileContextModel]:
+        """Retrieve all selected file contexts for a given chat."""
+        stmt = (
+            select(SelectedFileContextModel)
+            .where(SelectedFileContextModel.chat_id == chat_id)
+            .order_by(SelectedFileContextModel.created_at.asc())
+        )
+        return list(session.execute(stmt).scalars().all())
+
+    def delete(self, session: Session, context_id: str) -> bool:
+        """Delete an attached file context record by its ID."""
+        record = session.get(SelectedFileContextModel, context_id)
+        if record is None:
+            return False
+        session.delete(record)
+        return True
+
+    def delete_by_chat(self, session: Session, chat_id: str) -> int:
+        """Delete all attached file contexts for a conversation."""
+        records = self.list_by_chat(session, chat_id)
+        for r in records:
+            session.delete(r)
+        return len(records)

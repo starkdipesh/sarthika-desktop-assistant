@@ -22,6 +22,16 @@ class AppSettings:
     context_size: int = 4096  # Context window in tokens (2048 low-memory, 4096 standard)
     mock_mode: bool = False  # Offline mock/demo mode
     threads: int = 4  # Inference CPU threads
+    debug_mode: bool = False  # Developer debug mode for prompt inspection
+    temperature: float = 0.3  # Conservative sampling temperature for code
+    top_p: float = 0.8  # Nucleus sampling threshold
+    max_tokens: int = 2048  # Maximum generation length
+    repeat_penalty: float = 1.1  # Repetition penalty
+    onboarding_completed: bool = False  # Track first-launch onboarding status
+    user_name: str = "Dipesh Mahakali"  # Local user display name
+    auth_pin_hash: str | None = None  # Local SHA-256 PBKDF2 hash of security PIN
+    auth_pin_salt: str | None = None  # Random salt for PIN hashing
+    auth_lock_on_start: bool = False  # Lock vault on application start
 
     def to_dict(self) -> dict[str, Any]:
         """Convert settings to a serializable dictionary."""
@@ -39,6 +49,25 @@ class AppSettings:
             context_size=int(data.get("context_size", 4096)),
             mock_mode=bool(data.get("mock_mode", False)),
             threads=int(data.get("threads", 4)),
+            debug_mode=bool(data.get("debug_mode", False)),
+            temperature=float(data.get("temperature", 0.3)),
+            top_p=float(data.get("top_p", 0.8)),
+            max_tokens=int(data.get("max_tokens", 2048)),
+            repeat_penalty=float(data.get("repeat_penalty", 1.1)),
+            onboarding_completed=bool(data.get("onboarding_completed", False)),
+            user_name=str(data.get("user_name", "Dipesh Mahakali")),
+            auth_pin_hash=data.get("auth_pin_hash"),
+            auth_pin_salt=data.get("auth_pin_salt"),
+            auth_lock_on_start=bool(data.get("auth_lock_on_start", False)),
+        )
+
+    def to_generation_settings(self) -> GenerationSettings:
+        """Create a typed GenerationSettings instance from these defaults."""
+        return GenerationSettings(
+            temperature=self.temperature,
+            top_p=self.top_p,
+            max_tokens=self.max_tokens,
+            repeat_penalty=self.repeat_penalty,
         )
 
 

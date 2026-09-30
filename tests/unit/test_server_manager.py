@@ -137,3 +137,137 @@ def test_existing_local_server_connection_rejects_remote_ip(server_manager: Llam
     with pytest.raises(ConfigurationError) as exc:
         server_manager.connect_existing_server("http://192.168.1.50:8080")
     assert "Only local servers on 127.0.0.1" in exc.value.format_for_user()
+
+
+def test_crash_monitor_detects_process_crash_from_ready(server_manager: LlamaServerManager) -> None:
+    """Verify background crash monitor detects process exit from READY state."""
+    import time
+
+    mock_process = MagicMock()
+    mock_process.poll.return_value = None  # Running initially
+    mock_process.pid = 1234
+
+    server_manager._process = mock_process
+    server_manager._set_status(ServerState.STARTING, "Starting...")
+    server_manager._set_status(ServerState.READY, "Ready")
+
+    server_manager._start_crash_monitor()
+
+    # Now simulate process termination (crash with SIGKILL / code -9)
+    mock_process.poll.return_value = -9
+
+    # Wait briefly for monitor thread to execute check
+    for _ in range(20):
+        if server_manager.status.state == ServerState.CRASHED:
+            break
+        time.sleep(0.05)
+
+    server_manager.stop_server()
+    assert server_manager.status.state in (ServerState.CRASHED, ServerState.STOPPED)
+
+
+def test_crash_monitor_detects_process_crash_from_generating(server_manager: LlamaServerManager) -> None:
+    """Verify crash monitor detects unexpected process exit during GENERATING state."""
+    import time
+
+    mock_process = MagicMock()
+    mock_process.poll.return_value = None
+    mock_process.pid = 1235
+
+    server_manager._process = mock_process
+    server_manager._set_status(ServerState.STARTING, "Starting...")
+    server_manager._set_status(ServerState.READY, "Ready")
+    server_manager._set_status(ServerState.GENERATING, "Generating...")
+
+    server_manager._start_crash_monitor()
+
+    # Simulate segmentation fault / exit code 139
+    mock_process.poll.return_value = 139
+
+    for _ in range(20):
+        if server_manager.status.state == ServerState.CRASHED:
+            break
+        time.sleep(0.05)
+
+    assert server_manager.status.state == ServerState.CRASHED
+    assert "139" in str(server_manager.status.last_error)
+    server_manager.stop_server()
+
+
+def test_stop_server_force_kill_on_timeout(server_manager: LlamaServerManager) -> None:
+    """Verify stop_server escalates to kill() when process ignores terminate()."""
+    import subprocess
+
+    mock_process = MagicMock()
+    mock_process.poll.return_value = None
+    mock_process.pid = 9999
+    # terminate succeeds, wait raises TimeoutExpired, second wait succeeds
+    mock_process.wait.side_effect = [subprocess.TimeoutExpired(cmd=["llama-server"], timeout=0.1), 0]
+
+    server_manager._process = mock_process
+    server_manager._set_status(ServerState.STARTING, "Starting...")
+    server_manager._set_status(ServerState.READY, "Ready")
+
+    status = server_manager.stop_server(graceful_timeout=0.1)
+    assert status.state == ServerState.STOPPED
+    mock_process.terminate.assert_called_once()
+    mock_process.kill.assert_called_once()
+
+
+def test_start_server_automatically_resolves_port_collision(
+    server_manager: LlamaServerManager, sample_config: ModelConfiguration
+) -> None:
+    """Verify start_server selects an available port if configured port is occupied."""
+    mock_process = MagicMock()
+    mock_process.poll.return_value = None
+    mock_process.pid = 7777
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+
+    with (
+        patch("sarthika_code.llm.manager.is_port_available", side_effect=[False, True]),
+        patch("sarthika_code.llm.manager.find_available_port", return_value=8099),
+        patch("subprocess.Popen", return_value=mock_process),
+        patch("httpx.get", return_value=mock_resp),
+    ):
+        status = server_manager.start_server(sample_config, startup_timeout=1.0)
+        assert status.state == ServerState.READY
+        assert "8099" in (status.url or "")
+        server_manager.stop_server()
+
+
+def test_start_server_spawn_failure(
+    server_manager: LlamaServerManager, sample_config: ModelConfiguration
+) -> None:
+    """Verify start_server handles Popen OS errors (e.g. PermissionDenied/FileNotFound)."""
+    with (
+        patch("subprocess.Popen", side_effect=OSError("Exec format error")),
+        pytest.raises(ServerError) as exc,
+    ):
+        server_manager.start_server(sample_config, startup_timeout=1.0)
+
+    assert "Exec format error" in str(exc.value)
+    assert server_manager.status.state == ServerState.START_FAILED
+
+
+def test_start_server_health_check_timeout(
+    server_manager: LlamaServerManager, sample_config: ModelConfiguration
+) -> None:
+    """Verify start_server raises ServerError and marks START_FAILED when health check times out."""
+    mock_process = MagicMock()
+    mock_process.poll.return_value = None
+    mock_process.pid = 5555
+
+    import httpx
+
+    with (
+        patch("subprocess.Popen", return_value=mock_process),
+        patch("httpx.get", side_effect=httpx.ConnectError("Connection refused")),
+        pytest.raises(ServerError) as exc,
+    ):
+        server_manager.start_server(sample_config, startup_timeout=0.3)
+
+    assert "failed to respond" in str(exc.value).lower()
+    assert server_manager.status.state == ServerState.START_FAILED
+

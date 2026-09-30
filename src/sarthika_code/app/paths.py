@@ -35,6 +35,8 @@ class AppPaths:
 
     def ensure_directories(self) -> None:
         """Create all required application directories with safe permissions."""
+        import contextlib
+
         for path in (
             self.config_dir,
             self.data_dir,
@@ -42,7 +44,8 @@ class AppPaths:
             self.logs_dir,
             self.exports_dir,
         ):
-            path.mkdir(parents=True, exist_ok=True)
+            with contextlib.suppress(OSError):
+                path.mkdir(parents=True, exist_ok=True)
 
 
 def get_app_paths(base_override: Path | None = None) -> AppPaths:

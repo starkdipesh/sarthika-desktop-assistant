@@ -38,8 +38,13 @@ class DiagnosticsReport:
     server_state: str
     server_pid: str
     context_size: int
+    generation_settings: str
+    last_response_time: str
+    generated_tokens: str
+    tokens_per_second: str
     log_location: str
     database_location: str
+    config_location: str
 
     def to_formatted_text(self, redact: bool = True) -> str:
         """Format the report into a clean, human-readable multi-line string."""
@@ -60,7 +65,13 @@ class DiagnosticsReport:
             f"Server State          : {self.server_state}",
             f"Server PID            : {self.server_pid}",
             f"Context Setting       : {self.context_size} tokens",
+            f"Generation Defaults   : {self.generation_settings}",
             "-----------------------------------------------------------",
+            f"Last Response Time    : {self.last_response_time}",
+            f"Generated Tokens      : {self.generated_tokens}",
+            f"Tokens Per Second     : {self.tokens_per_second}",
+            "-----------------------------------------------------------",
+            f"Configuration Path    : {self.config_location if not redact else _sanitize_path(self.config_location)}",
             f"Log File Location     : {self.log_location if not redact else _sanitize_path(self.log_location)}",
             f"Database Location     : {self.database_location if not redact else _sanitize_path(self.database_location)}",
             "===========================================================",
@@ -76,10 +87,12 @@ class DiagnosticsService:
         paths: AppPaths,
         settings_service: SettingsService,
         status_provider: Callable[[], ServerStatus] | None = None,
+        metrics_provider: Callable[[], tuple[int, int] | None] | None = None,
     ) -> None:
         self.paths = paths
         self.settings_service = settings_service
         self.status_provider = status_provider
+        self.metrics_provider = metrics_provider
 
     def _get_cpu_summary(self) -> str:
         """Query CPU information safely without external dependencies."""
@@ -128,6 +141,27 @@ class DiagnosticsService:
             except Exception:
                 pass
 
+        # Calculate generation metrics if available
+        last_resp_str = "None yet"
+        tokens_str = "None yet"
+        tps_str = "N/A"
+
+        if self.metrics_provider is not None:
+            with contextlib.suppress(Exception):
+                metrics = self.metrics_provider()
+                if metrics:
+                    tok_count, dur_ms = metrics
+                    last_resp_str = f"{dur_ms / 1000.0:.2f}s ({dur_ms} ms)"
+                    tokens_str = f"{tok_count} tokens"
+                    if dur_ms > 0:
+                        speed = tok_count / (dur_ms / 1000.0)
+                        tps_str = f"{speed:.1f} tokens/s"
+
+        gen_settings_str = (
+            f"temp={settings.temperature}, top_p={settings.top_p}, "
+            f"max_tokens={settings.max_tokens}, repeat_penalty={settings.repeat_penalty}"
+        )
+
         return DiagnosticsReport(
             app_version="0.1.0",
             python_version=platform.python_version(),
@@ -143,6 +177,11 @@ class DiagnosticsService:
             server_state=status.state.value,
             server_pid=str(status.pid) if status.pid else "None",
             context_size=settings.context_size,
+            generation_settings=gen_settings_str,
+            last_response_time=last_resp_str,
+            generated_tokens=tokens_str,
+            tokens_per_second=tps_str,
             log_location=str(self.paths.log_file),
             database_location=str(self.paths.database_file),
+            config_location=str(self.paths.config_dir),
         )

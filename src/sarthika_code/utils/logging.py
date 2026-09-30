@@ -88,18 +88,21 @@ def setup_logging(
 
     # Rotating file handler
     if log_file_path is not None:
-        log_file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = RotatingFileHandler(
-            filename=str(log_file_path),
-            maxBytes=MAX_LOG_BYTES,
-            backupCount=BACKUP_COUNT,
-            encoding="utf-8",
-        )
-        file_handler.setLevel(level)
-        file_handler.setFormatter(
-            StructuredFormatter(datefmt="%Y-%m-%dT%H:%M:%S%z")
-        )
-        root_logger.addHandler(file_handler)
+        try:
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = RotatingFileHandler(
+                filename=str(log_file_path),
+                maxBytes=MAX_LOG_BYTES,
+                backupCount=BACKUP_COUNT,
+                encoding="utf-8",
+            )
+            file_handler.setLevel(level)
+            file_handler.setFormatter(
+                StructuredFormatter(datefmt="%Y-%m-%dT%H:%M:%S%z")
+            )
+            root_logger.addHandler(file_handler)
+        except OSError:
+            pass
 
     return root_logger
 

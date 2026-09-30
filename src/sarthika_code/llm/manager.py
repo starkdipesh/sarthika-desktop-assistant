@@ -227,9 +227,21 @@ class LlamaServerManager:
             time.sleep(0.25)
 
         # Timeout reached without healthy response
-        self.stop_server(graceful_timeout=2.0)
         timeout_err = f"Health check timed out after {startup_timeout:.0f} seconds."
         self._set_status(ServerState.START_FAILED, timeout_err, last_error=timeout_err)
+
+        with self._lock:
+            proc = self._process
+            self._process = None
+
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=2.0)
+            except Exception:
+                with contextlib.suppress(Exception):
+                    proc.kill()
+
         raise ServerError(
             f"llama-server failed to respond to health checks within {startup_timeout:.0f}s.",
             user_guidance="The server is taking too long to load the model. Try a smaller context size.",

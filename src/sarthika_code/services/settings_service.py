@@ -83,6 +83,38 @@ class SettingsService:
                 user_guidance="Specify a valid user port between 1024 and 65535.",
             )
 
+        # Enforce conservative generation setting bounds
+        if not (0.0 <= settings.temperature <= 2.0):
+            raise ConfigurationError(
+                message=f"Invalid temperature {settings.temperature}.",
+                user_guidance="Temperature must be between 0.0 (deterministic) and 2.0 (creative). Recommended: 0.2 to 0.4.",
+            )
+
+        if not (0.0 <= settings.top_p <= 1.0):
+            raise ConfigurationError(
+                message=f"Invalid top_p {settings.top_p}.",
+                user_guidance="Top-p must be between 0.0 and 1.0. Recommended: 0.8.",
+            )
+
+        if not (128 <= settings.max_tokens <= 16384):
+            raise ConfigurationError(
+                message=f"Invalid max_tokens {settings.max_tokens}.",
+                user_guidance="Max generation tokens must be between 128 and 16,384 tokens.",
+            )
+
+        if not (1.0 <= settings.repeat_penalty <= 2.0):
+            raise ConfigurationError(
+                message=f"Invalid repeat_penalty {settings.repeat_penalty}.",
+                user_guidance="Repeat penalty must be between 1.0 and 2.0. Recommended: 1.1.",
+            )
+
+    def reset_settings(self) -> AppSettings:
+        """Safely restore all settings to default values and persist them."""
+        defaults = AppSettings()
+        self.save_settings(defaults)
+        logger.info("Application settings reset to safe defaults.")
+        return defaults
+
     def get_setting(self, key: str, default: Any = None) -> Any:
         """Retrieve an individual raw setting by key."""
         with self.db_manager.session() as session:

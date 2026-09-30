@@ -201,3 +201,59 @@ def test_export_chat_markdown_and_text(chat_service: ChatService, tmp_path: Path
     assert "SARTHIKA CODE — CONVERSATION EXPORT" in txt_content
     assert "What is SQLite?" in txt_content
     assert "database_file" not in txt_content
+
+
+def test_export_chat_invalid_location(chat_service: ChatService, tmp_path: Path) -> None:
+    """Verify export_chat_to_file raises PersistenceError on unwritable or invalid file location."""
+    from unittest.mock import patch
+
+    from sarthika_code.domain.errors import PersistenceError
+
+    chat = chat_service.create_chat(title="Export Fail")
+    chat_service.add_user_message(chat.id, "Hello")
+
+    # Target an invalid path that cannot be written
+    invalid_dest = tmp_path / "protected" / "chat.md"
+
+    with (
+        patch.object(Path, "write_text", side_effect=OSError("Read-only filesystem")),
+        pytest.raises(PersistenceError) as exc_info,
+    ):
+        chat_service.export_chat_to_file(chat.id, invalid_dest)
+
+    assert "Failed to export chat" in str(exc_info.value)
+    assert "write permissions" in exc_info.value.format_for_user()
+
+
+def test_export_nonexistent_chat_raises_persistence_error(chat_service: ChatService) -> None:
+    """Verify exporting a nonexistent chat raises PersistenceError."""
+    from sarthika_code.domain.errors import PersistenceError
+
+    with pytest.raises(PersistenceError) as exc:
+        chat_service.export_chat_markdown("non-existent-id")
+    assert "non-existent" in str(exc.value).lower()
+
+
+def test_database_write_failure_raises_persistence_error(chat_service: ChatService) -> None:
+    """Verify database write failure during message creation raises PersistenceError."""
+    from unittest.mock import patch
+
+    from sarthika_code.domain.errors import PersistenceError
+
+    chat = chat_service.create_chat(title="DB Error Chat")
+
+    with (
+        patch.object(chat_service.message_repo, "create", side_effect=RuntimeError("disk full")),
+        pytest.raises(PersistenceError) as exc_info,
+    ):
+        chat_service.add_user_message(chat.id, "Test prompt")
+
+    assert "disk full" in str(exc_info.value)
+    assert isinstance(exc_info.value, PersistenceError)
+
+
+def test_rename_and_delete_nonexistent_chat(chat_service: ChatService) -> None:
+    """Verify renaming or deleting a missing chat ID returns False cleanly without crashing."""
+    assert chat_service.rename_chat("missing-id-1234", "New Title") is False
+    assert chat_service.delete_chat("missing-id-1234") is False
+

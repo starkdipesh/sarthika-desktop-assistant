@@ -11,6 +11,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from sarthika_code.domain.chat import Chat, Message, derive_chat_title
 from sarthika_code.domain.config import GenerationSettings
@@ -25,6 +26,8 @@ from sarthika_code.llm.base import (
     StreamStartedEvent,
     StreamTokenEvent,
 )
+from sarthika_code.prompts.builder import DELIMITER_START, PromptBuilder
+from sarthika_code.prompts.registry import WorkflowRegistry
 from sarthika_code.storage.database import DatabaseManager
 from sarthika_code.storage.models import ChatModel, MessageModel
 from sarthika_code.storage.repositories import ChatRepository, MessageRepository
@@ -51,6 +54,8 @@ class ChatService:
         self.db_manager = db_manager
         self.chat_repo = chat_repo or ChatRepository()
         self.message_repo = message_repo or MessageRepository()
+        self._last_tokens: int | None = None
+        self._last_duration_ms: int | None = None
 
     # --------------------------------------------------------------------------
     # Chat Lifecycle
@@ -130,6 +135,35 @@ class ChatService:
         except Exception as e:
             logger.error("Failed to delete chat %s: %s", chat_id, e)
             raise PersistenceError(f"Could not delete conversation: {e}") from e
+
+    def clear_all_chats(self) -> int:
+        """Permanently erase all conversations, messages, and attached contexts."""
+        try:
+            with self.db_manager.session() as session:
+                count = self.chat_repo.delete_all(session)
+                logger.info("Cleared all chats from database (%d removed).", count)
+                return count
+        except Exception as e:
+            logger.error("Failed to clear all chats: %s", e)
+            raise PersistenceError(f"Could not clear chat history: {e}") from e
+
+    def get_last_generation_metrics(self) -> tuple[int, int] | None:
+        """Return (tokens, duration_ms) of the most recent completed generation turn."""
+        if self._last_tokens is not None and self._last_duration_ms is not None:
+            return (self._last_tokens, self._last_duration_ms)
+        return None
+
+    def update_chat_workflow(self, chat_id: str, workflow_id: str) -> bool:
+        """Update the active workflow for a conversation."""
+        try:
+            with self.db_manager.session() as session:
+                success = self.chat_repo.update_workflow(session, chat_id, workflow_id)
+                if success:
+                    logger.info("Updated chat %s workflow to '%s'", chat_id, workflow_id)
+                return success
+        except Exception as e:
+            logger.error("Failed to update chat workflow %s: %s", chat_id, e)
+            raise PersistenceError(f"Could not update chat workflow: {e}") from e
 
     # --------------------------------------------------------------------------
     # Message Persistence
@@ -239,6 +273,7 @@ class ChatService:
         provider: LLMProvider,
         settings: GenerationSettings | None = None,
         cancellation_token: CancellationToken | None = None,
+        file_context_prompt: str | None = None,
     ) -> AsyncIterator[StreamEvent]:
         """Stream token events from LLMProvider while safely checkpointing to SQLite.
 
@@ -249,18 +284,30 @@ class ChatService:
         """
         # Load conversation history up to the current turn
         with self.db_manager.session() as session:
+            chat_record = self.chat_repo.get(session, chat_id)
+            workflow_id = chat_record.workflow if chat_record else "explain_code"
             raw_messages = self.message_repo.list_by_chat(session, chat_id)
+
+        # Resolve system prompt for active workflow
+        workflow = WorkflowRegistry.get_workflow(workflow_id)
+        system_content = workflow.system_prompt if workflow else DEFAULT_SYSTEM_PROMPT
 
         # Filter out current placeholder
         history = [m for m in raw_messages if m.id != assistant_message_id]
 
         chat_messages: list[ChatMessage] = []
-        # Prepend system prompt if not present
+        # Prepend workflow system prompt if not present in history
         if not history or history[0].role != "system":
-            chat_messages.append(ChatMessage(role="system", content=DEFAULT_SYSTEM_PROMPT))
+            chat_messages.append(ChatMessage(role="system", content=system_content))
 
-        for m in history:
-            chat_messages.append(ChatMessage(role=m.role, content=m.content))
+        for idx, m in enumerate(history):
+            content = m.content
+            if m.role == "user" and DELIMITER_START not in content:
+                content = PromptBuilder.build_user_message(content)
+            # If this is the latest user turn and file context is provided, attach context
+            if idx == len(history) - 1 and m.role == "user" and file_context_prompt:
+                content = f"{file_context_prompt}\n\n{content}"
+            chat_messages.append(ChatMessage(role=m.role, content=content))
 
         accumulated_chunks: list[str] = []
         token_count = 0
@@ -295,6 +342,8 @@ class ChatService:
                 elif isinstance(event, StreamCompletedEvent):
                     full_text = "".join(accumulated_chunks)
                     elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                    self._last_tokens = token_count
+                    self._last_duration_ms = elapsed_ms
                     self.update_assistant_message(
                         assistant_message_id,
                         full_text,
@@ -406,9 +455,60 @@ class ChatService:
         else:
             content = self.export_chat_text(chat_id)
 
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content, encoding="utf-8")
+        except OSError as e:
+            logger.error("Failed to export chat %s to %s: %s", chat_id, file_path, e)
+            raise PersistenceError(
+                f"Failed to export chat to '{file_path}': {e}",
+                user_guidance="Verify that the target path is valid and you have write permissions.",
+            ) from e
         logger.info("Exported chat %s to %s", chat_id, file_path)
+
+    # --------------------------------------------------------------------------
+    # Debug Prompt Inspection
+    # --------------------------------------------------------------------------
+
+    def get_debug_prompt(
+        self,
+        chat_id: str,
+        new_user_prompt: str | None = None,
+        file_context_prompt: str | None = None,
+    ) -> dict[str, Any]:
+        """Inspect the exact system prompt, history, and user input for developer debug review."""
+        with self.db_manager.session() as session:
+            chat_record = self.chat_repo.get(session, chat_id)
+            workflow_id = chat_record.workflow if chat_record else "explain_code"
+            raw_messages = self.message_repo.list_by_chat(session, chat_id)
+
+        workflow = WorkflowRegistry.get_workflow(workflow_id)
+        workflow_name = workflow.name if workflow else "General Chat"
+        system_content = workflow.system_prompt if workflow else DEFAULT_SYSTEM_PROMPT
+
+        messages_preview = [{"role": "system", "content": system_content}]
+        for idx, m in enumerate(raw_messages):
+            content = m.content
+            if m.role == "user" and DELIMITER_START not in content:
+                content = PromptBuilder.build_user_message(content)
+            if idx == len(raw_messages) - 1 and m.role == "user" and file_context_prompt and not new_user_prompt:
+                content = f"{file_context_prompt}\n\n{content}"
+            messages_preview.append({"role": m.role, "content": content})
+
+        if new_user_prompt:
+            delimited = PromptBuilder.build_user_message(new_user_prompt)
+            if file_context_prompt:
+                delimited = f"{file_context_prompt}\n\n{delimited}"
+            messages_preview.append({"role": "user", "content": delimited})
+
+        return {
+            "chat_id": chat_id,
+            "workflow_id": workflow_id,
+            "workflow_name": workflow_name,
+            "system_prompt": system_content,
+            "messages": messages_preview,
+            "raw_text": "\n\n".join([f"[{m['role'].upper()}]\n{m['content']}" for m in messages_preview]),
+        }
 
     # --------------------------------------------------------------------------
     # Helper Mappers

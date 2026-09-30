@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from PySide6.QtGui import QFont, QGuiApplication
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QHBoxLayout,
     QPlainTextEdit,
@@ -52,6 +53,12 @@ class DiagnosticsDialog(QDialog):
 
         btn_row = QHBoxLayout()
 
+        self.chk_redact = QCheckBox("Redact Home Directory Paths (Safe Sharing)")
+        self.chk_redact.setChecked(True)
+        self.chk_redact.setStyleSheet("color: #cbd5e1; font-size: 11px;")
+        self.chk_redact.stateChanged.connect(self._refresh_report)
+        btn_row.addWidget(self.chk_redact)
+
         self.btn_refresh = QPushButton("Refresh")
         self.btn_refresh.clicked.connect(self._refresh_report)
         btn_row.addWidget(self.btn_refresh)
@@ -74,16 +81,19 @@ class DiagnosticsDialog(QDialog):
     def _refresh_report(self) -> None:
         """Fetch updated diagnostics report and render into text view."""
         report = self.diagnostics_service.collect_diagnostics()
-        formatted_text = report.to_formatted_text(redact=True)
+        should_redact = getattr(self, "chk_redact", None) is None or self.chk_redact.isChecked()
+        formatted_text = report.to_formatted_text(redact=should_redact)
         self.txt_diagnostics.setPlainText(formatted_text)
 
     def _copy_to_clipboard(self) -> None:
         """Copy the redacted diagnostics text to the system clipboard."""
-        text = self.txt_diagnostics.toPlainText()
+        # Ensure we always copy the redacted version for safety
+        report = self.diagnostics_service.collect_diagnostics()
+        text = report.to_formatted_text(redact=True)
         clipboard = QGuiApplication.clipboard()
         if clipboard:
             clipboard.setText(text)
-            self.btn_copy.setText("Copied!")
+            self.btn_copy.setText("Copied (Redacted)!")
             # Reset button text after short delay
             from PySide6.QtCore import QTimer
 

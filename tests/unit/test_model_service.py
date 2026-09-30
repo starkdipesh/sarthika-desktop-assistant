@@ -86,3 +86,83 @@ def test_validate_executable_path_valid(model_service: ModelService, tmp_path: P
 
     validated = model_service.validate_executable_path(fake_exec)
     assert validated.resolve() == fake_exec.resolve()
+
+
+def test_start_configured_server_fails_when_model_removed(
+    model_service: ModelService, tmp_path: Path
+) -> None:
+    """Verify start_configured_server raises ModelValidationError if the model file was deleted/moved."""
+    fake_exec = tmp_path / "llama-server"
+    fake_exec.write_text("#!/bin/sh\n")
+    fake_exec.chmod(0o755)
+
+    fake_model = tmp_path / "model.gguf"
+    fake_model.write_bytes(b"GGUF_HEADER_DATA" * 100)
+
+    # Save paths in settings
+    from sarthika_code.domain.config import AppSettings
+    model_service.settings_service.save_settings(
+        AppSettings(
+            model_path=str(fake_model),
+            llama_server_path=str(fake_exec),
+        )
+    )
+
+    # Now remove the model file to simulate being moved or deleted
+    fake_model.unlink()
+
+    with pytest.raises(ModelValidationError) as exc:
+        model_service.start_configured_server()
+    assert "not found" in str(exc.value).lower()
+
+
+def test_start_configured_server_fails_when_executable_missing(
+    model_service: ModelService, tmp_path: Path
+) -> None:
+    """Verify start_configured_server raises ConfigurationError if the executable is missing."""
+    fake_model = tmp_path / "model.gguf"
+    fake_model.write_bytes(b"GGUF_HEADER_DATA" * 100)
+
+    from sarthika_code.domain.config import AppSettings
+    model_service.settings_service.save_settings(
+        AppSettings(
+            model_path=str(fake_model),
+            llama_server_path=str(tmp_path / "missing_exec"),
+        )
+    )
+
+    with pytest.raises(ConfigurationError) as exc:
+        model_service.start_configured_server()
+    assert "not found" in str(exc.value).lower()
+
+
+def test_mock_mode_works_with_no_model_configured() -> None:
+    """Verify mock mode functions completely without any model file or llama-server executable configured."""
+    import asyncio
+
+    from sarthika_code.domain.config import AppSettings
+    from sarthika_code.llm.base import ChatMessage
+    from sarthika_code.llm.factory import LLMProviderFactory
+    from sarthika_code.llm.mock import MockLLMProvider
+
+    # No model or executable paths set
+    settings = AppSettings(mock_mode=True, model_path="", llama_server_path="")
+    provider = LLMProviderFactory.create_provider(settings)
+
+    assert isinstance(provider, MockLLMProvider)
+    assert asyncio.run(provider.health_check()) is True
+
+    # Streaming works without any files on disk
+    messages = [ChatMessage(role="user", content="Hello in mock mode")]
+
+    async def _test_stream() -> list[str]:
+        tokens = []
+        async for event in provider.stream_chat(messages):
+            from sarthika_code.llm.base import StreamTokenEvent
+            if isinstance(event, StreamTokenEvent):
+                tokens.append(event.delta)
+        return tokens
+
+    tokens = asyncio.run(_test_stream())
+    assert len(tokens) > 0
+

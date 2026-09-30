@@ -332,6 +332,76 @@ async def test_llama_cpp_stream_connection_error() -> None:
         assert "could not connect" in last.error.lower()
 
 
+@pytest.mark.asyncio
+async def test_llama_cpp_stream_midway_disconnect() -> None:
+    """Verify LlamaCppProvider handles midway connection drop/RemoteProtocolError."""
+    provider = LlamaCppProvider("http://127.0.0.1:8080")
+    messages = [ChatMessage(role="user", content="hello")]
+
+    class DisconnectingResponse:
+        status_code = 200
+
+        async def aiter_lines(self) -> Any:
+            yield 'data: {"choices": [{"delta": {"content": "First token"}}]}'
+            raise httpx.RemoteProtocolError("Connection closed unexpectedly by server")
+
+    class MockClientContext:
+        async def __aenter__(self) -> Any:
+            mock_client = MagicMock()
+            mock_client.stream.return_value.__aenter__.return_value = DisconnectingResponse()
+            mock_client.stream.return_value.__aexit__.return_value = None
+            return mock_client
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    with patch("httpx.AsyncClient", return_value=MockClientContext()):
+        events = []
+        async for event in provider.stream_chat(messages):
+            events.append(event)
+
+        assert any(isinstance(e, StreamTokenEvent) and e.delta == "First token" for e in events)
+        last = events[-1]
+        assert isinstance(last, StreamErrorEvent)
+        assert last.is_cancelled is False
+        assert "Connection closed unexpectedly" in last.error or "Stream error" in last.error
+
+
+@pytest.mark.asyncio
+async def test_llama_cpp_stream_timeout_error() -> None:
+    """Verify LlamaCppProvider handles ReadTimeout during active generation."""
+    provider = LlamaCppProvider("http://127.0.0.1:8080")
+    messages = [ChatMessage(role="user", content="hello")]
+
+    class TimeoutResponse:
+        status_code = 200
+
+        async def aiter_lines(self) -> Any:
+            if False:
+                yield ""
+            raise httpx.ReadTimeout("Timed out waiting for next token")
+
+    class MockClientContext:
+        async def __aenter__(self) -> Any:
+            mock_client = MagicMock()
+            mock_client.stream.return_value.__aenter__.return_value = TimeoutResponse()
+            mock_client.stream.return_value.__aexit__.return_value = None
+            return mock_client
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    with patch("httpx.AsyncClient", return_value=MockClientContext()):
+        events = []
+        async for event in provider.stream_chat(messages):
+            events.append(event)
+
+        last = events[-1]
+        assert isinstance(last, StreamErrorEvent)
+        assert "timed out" in last.error.lower()
+
+
+
 # --------------------------------------------------------------------------
 # LLMProviderFactory Tests
 # --------------------------------------------------------------------------

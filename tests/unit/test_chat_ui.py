@@ -209,3 +209,53 @@ def test_main_window_full_workspace_integration(
 
     finally:
         window.close()
+
+
+def test_composer_fullscreen_expansion(qapp: QApplication) -> None:
+    """Verify composer card expands dynamically in wide / full-screen view."""
+    input_bar = ChatInputBar()
+    input_bar.resize(1600, 150)
+    input_bar.show()
+    qapp.processEvents()
+
+    # Verify no rigid 840px cap
+    assert input_bar.composer_card.maximumWidth() >= 16777215 or input_bar.composer_card.maximumWidth() > 1200
+    assert input_bar.composer_card.width() > 1000
+
+    input_bar.close()
+
+
+def test_theme_synchronization(
+    qapp: QApplication,
+    temp_paths: AppPaths,
+    db_manager: DatabaseManager,
+    settings_service: SettingsService,
+) -> None:
+    """Verify status bar, menu bar, sidebar, and workspace share synchronized theme colors."""
+    chat_service = ChatService(db_manager)
+    window = MainWindow(
+        paths=temp_paths,
+        settings_service=settings_service,
+        chat_service=chat_service,
+        model_service=None,
+        diagnostics_service=None,
+    )
+
+    try:
+        # Check status bar styling
+        sb_style = window.statusBar().styleSheet()
+        assert "#080b13" in sb_style
+        assert "#151c28" in sb_style
+
+        # Check menu bar styling
+        mb_style = window.menuBar().styleSheet()
+        assert "#080b13" in mb_style
+
+        # Check sidebar and workspace styling
+        assert "#080b13" in window.sidebar.styleSheet()
+        assert "#080b13" in window.workspace.header_frame.styleSheet()
+        assert "#080b13" in window.workspace.scroll_area.styleSheet()
+
+    finally:
+        window.close()
+

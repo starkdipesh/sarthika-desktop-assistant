@@ -14,9 +14,11 @@ from PySide6.QtWidgets import QApplication
 from sarthika_code.app.paths import AppPaths, get_app_paths
 from sarthika_code.llm.manager import LlamaServerManager
 from sarthika_code.services.chat_service import ChatService
+from sarthika_code.services.context_service import ProjectContextService
 from sarthika_code.services.diagnostics import DiagnosticsService
 from sarthika_code.services.model_service import ModelService
 from sarthika_code.services.settings_service import SettingsService
+from sarthika_code.services.workflow_service import WorkflowService
 from sarthika_code.storage.database import DatabaseManager
 from sarthika_code.ui.main_window import MainWindow
 from sarthika_code.utils.logging import get_logger, setup_logging
@@ -45,6 +47,8 @@ class SarthikaApp:
         # Initialize application services
         self.settings_service = SettingsService(self.db_manager)
         self.chat_service = ChatService(self.db_manager)
+        self.context_service = ProjectContextService(self.db_manager)
+        self.workflow_service = WorkflowService()
         self.server_manager = LlamaServerManager(log_dir=self.paths.logs_dir)
         self.model_service = ModelService(
             settings_service=self.settings_service,
@@ -54,6 +58,7 @@ class SarthikaApp:
             paths=self.paths,
             settings_service=self.settings_service,
             status_provider=lambda: self.server_manager.status,
+            metrics_provider=lambda: self.chat_service.get_last_generation_metrics(),
         )
 
         # PySide6 Application instance
@@ -77,6 +82,7 @@ class SarthikaApp:
             model_service=self.model_service,
             diagnostics_service=self.diagnostics_service,
             chat_service=self.chat_service,
+            context_service=self.context_service,
         )
         return self.main_window
 
