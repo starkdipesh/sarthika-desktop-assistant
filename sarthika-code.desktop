@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Sarthika Code
+Comment=Private, local-first desktop AI coding assistant
+Exec=/var/www/html/dipesh/Portfolio/sarthika-desktop-assistant/run.sh
+Icon=/var/www/html/dipesh/Portfolio/sarthika-desktop-assistant/assets/icon.png
+Terminal=false
+Type=Application
+Categories=Development;IDE;
+StartupWMClass=SarthikaCode
