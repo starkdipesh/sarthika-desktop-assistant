@@ -41,6 +41,7 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
         echo "=================================================================="
         if command -v sudo &>/dev/null; then
             sudo apt update && sudo apt install -y python3-venv python3-pip
+            rm -rf "$SCRIPT_DIR/.venv"
             "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv"
         fi
         

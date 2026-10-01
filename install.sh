@@ -31,9 +31,8 @@ if ! command -v git &>/dev/null; then
     MISSING_PKGS+=("git")
 fi
 if ! command -v python3 &>/dev/null; then
-    MISSING_PKGS+=("python3")
-fi
-if ! python3 -m venv --help &>/dev/null; then
+    MISSING_PKGS+=("python3" "python3-venv")
+elif ! python3 -m ensurepip --version &>/dev/null; then
     MISSING_PKGS+=("python3-venv")
 fi
 if ! command -v pip3 &>/dev/null && ! python3 -m pip --version &>/dev/null; then
@@ -66,6 +65,7 @@ echo "Step 3/4: Configuring Python environment and dependencies..."
 notify_status "Configuring dependencies (takes 1-2 minutes on first run)..."
 
 if [ ! -f "$INSTALL_DIR/.venv/bin/python" ]; then
+    rm -rf "$INSTALL_DIR/.venv"
     python3 -m venv "$INSTALL_DIR/.venv"
 fi
 
