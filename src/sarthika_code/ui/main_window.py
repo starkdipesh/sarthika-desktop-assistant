@@ -49,6 +49,7 @@ from sarthika_code.ui.dialogs.privacy_dialog import PrivacyDialog
 from sarthika_code.ui.dialogs.prompt_review_dialog import PromptReviewDialog
 from sarthika_code.ui.dialogs.provider_test_dialog import ProviderTestDialog
 from sarthika_code.ui.dialogs.settings_dialog import SettingsDialog
+from sarthika_code.ui.dialogs.setup_wizard_dialog import SetupWizardDialog
 from sarthika_code.utils.logging import get_logger
 
 if TYPE_CHECKING:
@@ -515,9 +516,14 @@ class MainWindow(QMainWindow):
         file_menu.addAction(settings_action)
 
         if self.model_service is not None:
+            quick_setup_action = QAction("&1-Click Model Setup Wizard...", self)
+            quick_setup_action.triggered.connect(self._open_quick_setup)
+            file_menu.addAction(quick_setup_action)
+
             setup_action = QAction("&Model & Server Setup...", self)
             setup_action.triggered.connect(self._open_model_setup)
             file_menu.addAction(setup_action)
+
 
         exit_action = QAction("&Exit", self)
         exit_action.triggered.connect(self.close)
@@ -787,12 +793,30 @@ class MainWindow(QMainWindow):
         dialog.exec()
         self.settings = self.settings_service.load_settings()
         self._update_mock_button_label()
-        if dialog.user_choice == "configure_model":
+        if dialog.user_choice == "quick_setup":
+            self._open_quick_setup()
+        elif dialog.user_choice == "configure_model":
             self._open_model_setup()
+
+    def _open_quick_setup(self) -> None:
+        """Open the 1-Click Fast Setup Wizard."""
+        if self.model_service is not None:
+            wizard = SetupWizardDialog(
+                model_service=self.model_service,
+                settings_service=self.settings_service,
+                paths=self.paths,
+                parent=self,
+            )
+            result = wizard.exec()
+            self.settings = self.settings_service.load_settings()
+            self._update_mock_button_label()
+            if result == 2:  # User clicked "Select Existing File..."
+                self._open_model_setup()
 
     def _check_first_launch_onboarding(self) -> None:
         """Prompt first-time users with the onboarding guide."""
         self._open_onboarding()
+
 
     def _toggle_sidebar(self) -> None:
         """Toggle left sidebar between collapsed (hidden) and expanded state."""

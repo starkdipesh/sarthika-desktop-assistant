@@ -7,10 +7,12 @@ Never scans the filesystem automatically and never assumes quantization from fil
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from sarthika_code.app.paths import AppPaths, get_app_paths
 from sarthika_code.domain.config import AppSettings, ModelConfiguration
 from sarthika_code.domain.errors import ConfigurationError, ModelValidationError
 from sarthika_code.domain.server import ServerStatus
@@ -19,6 +21,7 @@ from sarthika_code.services.settings_service import SettingsService
 from sarthika_code.utils.logging import get_logger
 
 logger = get_logger("ModelService")
+
 
 
 class ModelService:
@@ -147,6 +150,38 @@ class ModelService:
 
         return path
 
+    def discover_llama_server_path(self, paths: AppPaths | None = None) -> Path | None:
+        """Attempt to auto-discover an existing or managed llama-server executable."""
+        exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
+
+        # 1. Check user application data bin directory
+        resolved_paths = paths or get_app_paths()
+        candidate = resolved_paths.bin_dir / exec_name
+        if candidate.exists() and candidate.is_file():
+            return candidate
+
+        # 2. Check bundled PyInstaller directory
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidate = Path(meipass) / "bin" / exec_name
+            if candidate.exists() and candidate.is_file():
+                return candidate
+
+        # 3. Check directory of current executable
+        candidate = Path(sys.executable).parent / "bin" / exec_name
+        if candidate.exists() and candidate.is_file():
+            return candidate
+        candidate = Path(sys.executable).parent / exec_name
+        if candidate.exists() and candidate.is_file():
+            return candidate
+
+        # 4. Check system PATH
+        which_path = shutil.which(exec_name)
+        if which_path:
+            return Path(which_path)
+
+        return None
+
     def start_configured_server(
         self,
         model_path: str | None = None,
@@ -159,11 +194,18 @@ class ModelService:
 
         effective_model = model_path or settings.model_path
         effective_exec = exec_path or settings.llama_server_path
+        if not effective_exec:
+            discovered = self.discover_llama_server_path()
+            if discovered:
+                effective_exec = str(discovered)
+                logger.info("Auto-discovered llama-server at: %s", effective_exec)
+
         effective_ctx = context_size or settings.context_size
         effective_port = port or settings.server_port
 
         validated_exec = self.validate_executable_path(effective_exec)
         model_config = self.validate_model_path(effective_model)
+
 
         config = ModelConfiguration(
             model_path=model_config.model_path,

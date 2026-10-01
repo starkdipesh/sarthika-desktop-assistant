@@ -90,13 +90,13 @@ class OnboardingDialog(QDialog):
         )
         container_layout.addWidget(card1)
 
-        # Card 2: Requirements & No Bundled Model
+        # Card 2: 1-Click Setup & Requirements
         card2 = self._create_card(
-            "⚙️ Requirements & Model Weights",
-            "• GGUF Model Required: Sarthika Code uses quantized GGUF models (e.g. Qwen2.5-Coder 3B Instruct Q4_K_M).\n"
-            "• llama-server Binary Required: Needs the pre-compiled llama-server executable from llama.cpp.\n"
-            "• No Model Bundled: Model weights are not bundled with the application to respect licensing and keep downloads small.\n"
-            "• Try Mock Mode Anytime: You can immediately test the UI, streaming, and workflows using Offline Mock Mode without downloading model weights.",
+            "⚡ 1-Click Automatic Setup (Recommended)",
+            "• Zero-Terminal Setup: Sarthika Code can automatically download and configure the recommended local model (Qwen 2.5 Coder) in one click.\n"
+            "• Works on Standard Laptops: CPU-friendly and requires no discrete GPU or technical configuration.\n"
+            "• Manual Setup Option: You can also point to an existing GGUF model and llama-server if you already have them on disk.\n"
+            "• Try Demo Mode Anytime: You can test the UI, streaming, and workflows immediately using Offline Mock Mode.",
         )
         container_layout.addWidget(card2)
 
@@ -123,7 +123,7 @@ class OnboardingDialog(QDialog):
         button_row = QHBoxLayout()
         button_row.setSpacing(10)
 
-        btn_docs = QPushButton("Open Documentation")
+        btn_docs = QPushButton("Documentation")
         btn_docs.setStyleSheet(
             "background-color: #334155; color: #f1f5f9; padding: 8px 14px; font-weight: bold; border-radius: 4px;"
         )
@@ -132,21 +132,29 @@ class OnboardingDialog(QDialog):
 
         button_row.addStretch()
 
-        btn_mock = QPushButton("Use Mock / Demo Mode")
+        btn_mock = QPushButton("Offline Demo Mode")
         btn_mock.setStyleSheet(
-            "background-color: #1e3a5f; color: #93c5fd; padding: 8px 16px; font-weight: bold; border-radius: 4px; border: 1px solid #3b82f6;"
+            "background-color: #1e3a5f; color: #93c5fd; padding: 8px 14px; font-weight: bold; border-radius: 4px; border: 1px solid #3b82f6;"
         )
         btn_mock.clicked.connect(self._on_choose_mock)
         button_row.addWidget(btn_mock)
 
-        btn_setup = QPushButton("Configure Local Model")
-        btn_setup.setStyleSheet(
+        btn_manual = QPushButton("Manual Setup...")
+        btn_manual.setStyleSheet(
+            "background-color: #334155; color: #cbd5e1; padding: 8px 14px; font-weight: bold; border-radius: 4px;"
+        )
+        btn_manual.clicked.connect(self._on_choose_setup)
+        button_row.addWidget(btn_manual)
+
+        btn_quick = QPushButton("⚡ 1-Click Fast Setup")
+        btn_quick.setStyleSheet(
             "background-color: #2563eb; color: white; padding: 8px 18px; font-weight: bold; border-radius: 4px;"
         )
-        btn_setup.clicked.connect(self._on_choose_setup)
-        button_row.addWidget(btn_setup)
+        btn_quick.clicked.connect(self._on_choose_quick_setup)
+        button_row.addWidget(btn_quick)
 
         layout.addLayout(button_row)
+
 
     def _create_card(self, title: str, text: str) -> QFrame:
         frame = QFrame()
@@ -180,10 +188,16 @@ class OnboardingDialog(QDialog):
             self.settings_service.save_settings(settings)
             logger.info("Onboarding marked as completed.")
 
+    def _on_choose_quick_setup(self) -> None:
+        self.user_choice = "quick_setup"
+        self._save_completion_state()
+        self.accept()
+
     def _on_choose_setup(self) -> None:
         self.user_choice = "configure_model"
         self._save_completion_state()
         self.accept()
+
 
     def _on_choose_mock(self) -> None:
         self.user_choice = "mock_mode"

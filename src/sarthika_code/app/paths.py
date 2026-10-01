@@ -33,6 +33,16 @@ class AppPaths:
         """Absolute path to the active rotating application log file."""
         return self.logs_dir / "sarthika.log"
 
+    @property
+    def models_dir(self) -> Path:
+        """Absolute path to the directory where downloaded GGUF models are stored."""
+        return self.data_dir / "models"
+
+    @property
+    def bin_dir(self) -> Path:
+        """Absolute path to the directory where managed engine binaries are stored."""
+        return self.data_dir / "bin"
+
     def ensure_directories(self) -> None:
         """Create all required application directories with safe permissions."""
         import contextlib
@@ -43,9 +53,12 @@ class AppPaths:
             self.database_dir,
             self.logs_dir,
             self.exports_dir,
+            self.models_dir,
+            self.bin_dir,
         ):
             with contextlib.suppress(OSError):
                 path.mkdir(parents=True, exist_ok=True)
+
 
 
 def get_app_paths(base_override: Path | None = None) -> AppPaths:

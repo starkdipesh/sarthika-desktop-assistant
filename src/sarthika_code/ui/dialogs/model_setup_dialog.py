@@ -74,6 +74,11 @@ class ModelSetupDialog(QDialog):
         btn_browse_model = QPushButton("Browse...")
         btn_browse_model.clicked.connect(self._browse_model)
         file_row.addWidget(btn_browse_model)
+
+        btn_download = QPushButton("⚡ Download Model...")
+        btn_download.setStyleSheet("background-color: #1e3a5f; color: #60a5fa; font-weight: bold;")
+        btn_download.clicked.connect(self._open_downloader)
+        file_row.addWidget(btn_download)
         model_layout.addLayout(file_row)
 
         self.lbl_model_info = QLabel("")
@@ -86,13 +91,16 @@ class ModelSetupDialog(QDialog):
         exec_layout = QVBoxLayout(exec_group)
 
         exec_row = QHBoxLayout()
-        self.txt_exec_path = QLineEdit(self.settings.llama_server_path or "")
-        self.txt_exec_path.setPlaceholderText("Path to llama-server or llama-server.exe binary")
+        discovered_exec = self.model_service.discover_llama_server_path()
+        initial_exec = self.settings.llama_server_path or (str(discovered_exec) if discovered_exec else "")
+        self.txt_exec_path = QLineEdit(initial_exec)
+        self.txt_exec_path.setPlaceholderText("Path to llama-server or llama-server.exe binary (auto-discovered if left empty)")
         exec_row.addWidget(self.txt_exec_path)
 
         btn_browse_exec = QPushButton("Browse...")
         btn_browse_exec.clicked.connect(self._browse_executable)
         exec_row.addWidget(btn_browse_exec)
+
         exec_layout.addLayout(exec_row)
         layout.addWidget(exec_group)
 
@@ -325,3 +333,21 @@ class ModelSetupDialog(QDialog):
         """Callback from server manager; safely update UI components."""
         # Use QMetaObject or direct update if running in same thread
         self._sync_status(status)
+
+    def _open_downloader(self) -> None:
+        """Launch the 1-click model setup wizard dialog."""
+        from sarthika_code.ui.dialogs.setup_wizard_dialog import SetupWizardDialog
+
+        wizard = SetupWizardDialog(
+            model_service=self.model_service,
+            settings_service=self.settings_service,
+            parent=self,
+        )
+        if wizard.exec() == 1:
+            updated = self.settings_service.load_settings()
+            self.settings = updated
+            self.txt_model_path.setText(updated.model_path or "")
+            self.txt_exec_path.setText(updated.llama_server_path or "")
+            self._check_initial_model_info()
+            self._sync_status(self.model_service.get_status())
+
