@@ -88,8 +88,8 @@ RECOMMENDED_MODELS: list[DownloadableModel] = [
 # llama.cpp stable release precompiled binaries
 LLAMA_CPP_RELEASE_TAG = "b4776"
 ENGINE_DOWNLOAD_URLS: dict[str, str] = {
-    "win32": f"https://github.com/ggerganov/llama.cpp/releases/download/{LLAMA_CPP_RELEASE_TAG}/llama-{LLAMA_CPP_RELEASE_TAG}-bin-win-avx2-x64.zip",
-    "linux": f"https://github.com/ggerganov/llama.cpp/releases/download/{LLAMA_CPP_RELEASE_TAG}/llama-{LLAMA_CPP_RELEASE_TAG}-bin-ubuntu-x64.tar.gz",
+    "win32": f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_CPP_RELEASE_TAG}/llama-{LLAMA_CPP_RELEASE_TAG}-bin-win-avx2-x64.zip",
+    "linux": f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_CPP_RELEASE_TAG}/llama-{LLAMA_CPP_RELEASE_TAG}-bin-ubuntu-x64.zip",
 }
 
 
@@ -253,7 +253,7 @@ class ModelDownloadService:
             raise RuntimeError(f"No prebuilt llama-server binary configured for platform: {sys.platform}")
 
         dest_binary = self.get_engine_destination_path()
-        archive_name = "llama_archive.zip" if platform_key == "win32" else "llama_archive.tar.gz"
+        archive_name = "llama_archive.zip"
         archive_path = self.paths.bin_dir / archive_name
 
         cancel_event = threading.Event()
@@ -275,40 +275,39 @@ class ModelDownloadService:
                 if response.status_code != 200:
                     raise RuntimeError(f"Engine download failed with HTTP status {response.status_code}")
 
+                total = int(response.headers.get("content-length", 50 * 1024 * 1024))
+                progress.total_bytes = total
+                progress.status = "downloading"
 
-                    total = int(response.headers.get("content-length", 50 * 1024 * 1024))
-                    progress.total_bytes = total
-                    progress.status = "downloading"
+                downloaded = 0
+                start_time = time.monotonic()
+                last_update = start_time
 
-                    downloaded = 0
-                    start_time = time.monotonic()
-                    last_update = start_time
+                with open(archive_path, "wb") as f:
+                    for chunk in response.iter_bytes(chunk_size=128 * 1024):
+                        if cancel_event.is_set():
+                            progress.status = "cancelled"
+                            if on_progress:
+                                on_progress(progress)
+                            if archive_path.exists():
+                                archive_path.unlink()
+                            raise RuntimeError("Download cancelled by user.")
 
-                    with open(archive_path, "wb") as f:
-                        for chunk in response.iter_bytes(chunk_size=128 * 1024):
-                            if cancel_event.is_set():
-                                progress.status = "cancelled"
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            now = time.monotonic()
+                            if now - last_update >= 0.25:
+                                elapsed = max(0.001, now - start_time)
+                                speed = downloaded / elapsed
+                                percent = min(100.0, (downloaded / max(1, total)) * 100.0)
+                                progress.downloaded_bytes = downloaded
+                                progress.percent = percent
+                                progress.speed_bytes_sec = speed
+                                progress.message = f"Downloading AI engine: {downloaded / (1024*1024):.1f} MB / {total / (1024*1024):.1f} MB"
                                 if on_progress:
                                     on_progress(progress)
-                                if archive_path.exists():
-                                    archive_path.unlink()
-                                raise RuntimeError("Download cancelled by user.")
-
-                            if chunk:
-                                f.write(chunk)
-                                downloaded += len(chunk)
-                                now = time.monotonic()
-                                if now - last_update >= 0.25:
-                                    elapsed = max(0.001, now - start_time)
-                                    speed = downloaded / elapsed
-                                    percent = min(100.0, (downloaded / max(1, total)) * 100.0)
-                                    progress.downloaded_bytes = downloaded
-                                    progress.percent = percent
-                                    progress.speed_bytes_sec = speed
-                                    progress.message = f"Downloading AI engine: {downloaded / (1024*1024):.1f} MB / {total / (1024*1024):.1f} MB"
-                                    if on_progress:
-                                        on_progress(progress)
-                                    last_update = now
+                                last_update = now
 
             # Extract archive
             progress.status = "extracting"
@@ -316,17 +315,18 @@ class ModelDownloadService:
             if on_progress:
                 on_progress(progress)
 
-            if platform_key == "win32":
+            target_binary_name = "llama-server.exe" if platform_key == "win32" else "llama-server"
+            if zipfile.is_zipfile(archive_path):
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
                     for member in zip_ref.namelist():
-                        if member.lower().endswith("llama-server.exe"):
+                        if os.path.basename(member).lower() == target_binary_name.lower():
                             with zip_ref.open(member) as source, open(dest_binary, "wb") as target:
                                 shutil.copyfileobj(source, target)
                             break
             else:
                 with tarfile.open(archive_path, "r:*") as tar_ref:
                     for member in tar_ref.getmembers():
-                        if member.name.endswith("llama-server"):
+                        if os.path.basename(member.name).lower() == target_binary_name.lower():
                             extracted_file = tar_ref.extractfile(member)
                             if extracted_file:
                                 with open(dest_binary, "wb") as target:

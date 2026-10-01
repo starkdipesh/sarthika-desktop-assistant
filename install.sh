@@ -23,11 +23,11 @@ notify_status() {
     echo "• $1"
 }
 
-# 1. Check & Install System Prerequisites (python3, python3-venv, python3-pip, git)
+# 1. Check & Install System Prerequisites (python3, python3-venv, python3-pip, git, curl, unzip)
 echo "Step 1/4: Checking system requirements..."
 MISSING_PKGS=()
 
-for pkg in git python3 python3-venv python3-pip; do
+for pkg in git curl unzip python3 python3-venv python3-pip; do
     if command -v dpkg &>/dev/null; then
         if ! dpkg -s "$pkg" &>/dev/null; then
             MISSING_PKGS+=("$pkg")
@@ -105,6 +105,48 @@ fi
 
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet
 "$INSTALL_DIR/.venv/bin/pip" install --ignore-requires-python -e "$INSTALL_DIR" --quiet
+
+# 3b. Install & Configure llama-server local AI engine
+echo "Installing and configuring local llama-server engine..."
+BIN_DIR="$INSTALL_DIR/bin"
+DATA_BIN_DIR="$HOME/.local/share/sarthika_code/bin"
+mkdir -p "$BIN_DIR" "$DATA_BIN_DIR"
+
+if [ ! -f "$BIN_DIR/llama-server" ] || [ ! -x "$BIN_DIR/llama-server" ]; then
+    echo "• Downloading pre-built llama-server for Ubuntu..."
+    LLAMA_ZIP="/tmp/llama-server-ubuntu.zip"
+    LLAMA_URL="https://github.com/ggml-org/llama.cpp/releases/download/b4776/llama-b4776-bin-ubuntu-x64.zip"
+
+    if curl -sSL --connect-timeout 15 --max-time 180 -o "$LLAMA_ZIP" "$LLAMA_URL"; then
+        echo "• Extracting llama-server..."
+        if command -v unzip &>/dev/null; then
+            unzip -q -j "$LLAMA_ZIP" "build/bin/llama-server" -d "$BIN_DIR" 2>/dev/null || unzip -q -j "$LLAMA_ZIP" "*llama-server" -d "$BIN_DIR" 2>/dev/null || true
+        else
+            python3 -c "
+import zipfile, os, shutil
+with zipfile.ZipFile('$LLAMA_ZIP') as z:
+    for m in z.namelist():
+        if os.path.basename(m) == 'llama-server':
+            with z.open(m) as src, open('$BIN_DIR/llama-server', 'wb') as dst:
+                shutil.copyfileobj(src, dst)
+            break
+" 2>/dev/null || true
+        fi
+        rm -f "$LLAMA_ZIP"
+        if [ -f "$BIN_DIR/llama-server" ]; then
+            chmod +x "$BIN_DIR/llama-server"
+            cp -f "$BIN_DIR/llama-server" "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+            chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+            echo "✅ llama-server installed successfully: $BIN_DIR/llama-server"
+        fi
+    else
+        echo "⚠️ Could not download pre-built llama-server automatically. It can be provided or configured in-app."
+    fi
+else
+    echo "• llama-server is already installed."
+    cp -f "$BIN_DIR/llama-server" "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+    chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+fi
 
 # Mark setup as completely and successfully finished
 touch "$INSTALL_DIR/.setup_complete"

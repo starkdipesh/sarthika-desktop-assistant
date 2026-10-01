@@ -78,11 +78,18 @@ if [ ! -f "$SCRIPT_DIR/.setup_complete" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pytho
     echo "=================================================================="
 fi
 
-PYTHON_EXEC="$SCRIPT_DIR/.venv/bin/python"
-
-if [ ! -f "$PYTHON_EXEC" ]; then
-    echo "Error: Python environment is not initialized properly. Please re-run ./run.sh"
-    exit 1
+# Ensure llama-server directory exists and binary is executable if present
+BIN_DIR="$SCRIPT_DIR/bin"
+DATA_BIN_DIR="$HOME/.local/share/sarthika_code/bin"
+mkdir -p "$BIN_DIR" "$DATA_BIN_DIR"
+if [ -f "$BIN_DIR/llama-server" ]; then
+    chmod +x "$BIN_DIR/llama-server" 2>/dev/null || true
+    if [ ! -f "$DATA_BIN_DIR/llama-server" ]; then
+        cp -f "$BIN_DIR/llama-server" "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+        chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+    fi
+elif [ -f "$DATA_BIN_DIR/llama-server" ]; then
+    chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
 fi
 
 # 2. Register Linux Desktop shortcut in user application menu
@@ -118,4 +125,9 @@ EOF
 fi
 
 # 3. Launch application
+PYTHON_EXEC="$SCRIPT_DIR/.venv/bin/python"
+if [ ! -f "$PYTHON_EXEC" ]; then
+    echo "Error: Python environment is not initialized properly. Please re-run ./run.sh"
+    exit 1
+fi
 exec "$PYTHON_EXEC" "$SCRIPT_DIR/run.py" "$@"

@@ -154,11 +154,21 @@ class ModelService:
         """Attempt to auto-discover an existing or managed llama-server executable."""
         exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
 
-        # 1. Check user application data bin directory
+        # 1. Check user application data and installation bin directories
         resolved_paths = paths or get_app_paths()
-        candidate = resolved_paths.bin_dir / exec_name
-        if candidate.exists() and candidate.is_file():
-            return candidate
+        candidates = [
+            resolved_paths.bin_dir / exec_name,
+            Path.home() / ".local/share/sarthika-code/bin" / exec_name,
+            Path.home() / ".local/share/sarthika_code/bin" / exec_name,
+            Path.home() / ".local/bin" / exec_name,
+            Path(__file__).resolve().parent.parent.parent.parent / "bin" / exec_name,
+        ]
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                if sys.platform != "win32" and not os.access(candidate, os.X_OK):
+                    with contextlib.suppress(OSError):
+                        candidate.chmod(candidate.stat().st_mode | 0o755)
+                return candidate
 
         # 2. Check bundled PyInstaller directory
         meipass = getattr(sys, "_MEIPASS", None)

@@ -54,6 +54,15 @@ class SarthikaApp:
             settings_service=self.settings_service,
             server_manager=self.server_manager,
         )
+
+        # Auto-configure discovered llama-server if not yet set or invalid
+        current_settings = self.settings_service.get_settings()
+        if not current_settings.llama_server_path or not Path(current_settings.llama_server_path).is_file():
+            discovered = self.model_service.discover_llama_server_path(self.paths)
+            if discovered:
+                self.settings_service.update_settings(llama_server_path=str(discovered))
+                self.logger.info("Auto-configured llama-server path: %s", discovered)
+
         self.diagnostics_service = DiagnosticsService(
             paths=self.paths,
             settings_service=self.settings_service,
