@@ -88,18 +88,33 @@ fi
 # 2. Register Linux Desktop shortcut in user application menu
 DESKTOP_DIR="$HOME/.local/share/applications"
 if [ -d "$DESKTOP_DIR" ]; then
+    mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
+    mkdir -p "$HOME/.local/share/pixmaps"
+    if [ -f "$SCRIPT_DIR/assets/icon.png" ]; then
+        cp "$SCRIPT_DIR/assets/icon.png" "$HOME/.local/share/icons/hicolor/256x256/apps/sarthika-code.png" 2>/dev/null || true
+        cp "$SCRIPT_DIR/assets/icon.png" "$HOME/.local/share/pixmaps/sarthika-code.png" 2>/dev/null || true
+        if command -v gtk-update-icon-cache &>/dev/null; then
+            gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+        fi
+    fi
+
     cat <<EOF > "$DESKTOP_DIR/sarthika-code.desktop"
 [Desktop Entry]
 Name=Sarthika Code
 Comment=Private, local-first desktop AI coding assistant
-Exec=$SCRIPT_DIR/run.sh
-Icon=$SCRIPT_DIR/assets/icon.png
+Exec="$SCRIPT_DIR/run.sh"
+Path=$SCRIPT_DIR
+Icon=$HOME/.local/share/icons/hicolor/256x256/apps/sarthika-code.png
 Terminal=false
 Type=Application
-Categories=Development;IDE;
+Categories=Development;IDE;Utility;
 StartupWMClass=SarthikaCode
 EOF
     chmod +x "$DESKTOP_DIR/sarthika-code.desktop" 2>/dev/null || true
+
+    if command -v update-desktop-database &>/dev/null; then
+        update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+    fi
 fi
 
 # 3. Launch application

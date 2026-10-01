@@ -2,8 +2,8 @@
 Name=Sarthika Code
 Comment=Private, local-first desktop AI coding assistant
 Exec=bash -c "cd \"\$(dirname \"%k\")\" && ./run.sh"
-Icon=utilities-terminal
+Icon=sarthika-code
 Terminal=false
 Type=Application
-Categories=Development;IDE;
+Categories=Development;IDE;Utility;
 StartupWMClass=SarthikaCode

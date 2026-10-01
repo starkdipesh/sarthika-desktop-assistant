@@ -110,15 +110,34 @@ fi
 touch "$INSTALL_DIR/.setup_complete"
 
 # 4. Create Desktop Shortcut for Ubuntu App Launcher
-echo "Step 4/4: Registering Desktop launcher..."
+echo "Step 4/4: Registering Desktop launcher and icon..."
 mkdir -p "$HOME/.local/share/applications"
+mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
+mkdir -p "$HOME/.local/share/pixmaps"
+
+# Install icon into standard system icon locations so GNOME finds it immediately
+if [ -f "$INSTALL_DIR/assets/icon.png" ]; then
+    cp "$INSTALL_DIR/assets/icon.png" "$HOME/.local/share/icons/hicolor/256x256/apps/sarthika-code.png"
+    cp "$INSTALL_DIR/assets/icon.png" "$HOME/.local/share/pixmaps/sarthika-code.png"
+    if command -v gtk-update-icon-cache &>/dev/null; then
+        gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+    fi
+fi
+
+# Clean up any stale or orphaned launchers pointing to incorrect paths (e.g. /var/www)
+for f in "$HOME/.local/share/applications"/sarthika*.desktop "$HOME/Desktop"/sarthika*.desktop; do
+    if [ -f "$f" ] && grep -q "/var/www" "$f" 2>/dev/null; then
+        rm -f "$f"
+    fi
+done
 
 cat <<EOF > "$DESKTOP_ENTRY"
 [Desktop Entry]
 Name=Sarthika Code
 Comment=Private, local-first desktop AI coding assistant
-Exec=$INSTALL_DIR/run.sh
-Icon=$INSTALL_DIR/assets/icon.png
+Exec="$INSTALL_DIR/run.sh"
+Path=$INSTALL_DIR
+Icon=$HOME/.local/share/icons/hicolor/256x256/apps/sarthika-code.png
 Terminal=false
 Type=Application
 Categories=Development;IDE;Utility;
