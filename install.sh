@@ -62,7 +62,9 @@ if [ -d "$INSTALL_DIR" ]; then
     if [ -d "$INSTALL_DIR/.git" ] && git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
         notify_status "Updating existing Sarthika Code installation..."
         cd "$INSTALL_DIR"
-        git pull --quiet || true
+        git fetch origin main --quiet || true
+        git reset --hard origin/main --quiet || true
+        git clean -fd --quiet || true
     else
         notify_status "Cleaning up previously interrupted download..."
         rm -rf "$INSTALL_DIR"
@@ -99,12 +101,6 @@ if [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
     echo "Please install python3-venv by running:"
     echo "   sudo apt install -y python3-venv python3-pip"
     exit 1
-fi
-
-# Ensure pyproject.toml does not have restrictive upper bound if present from previous clones
-if [ -f "$INSTALL_DIR/pyproject.toml" ]; then
-    sed -i 's/<3\.13//g' "$INSTALL_DIR/pyproject.toml" 2>/dev/null || true
-    sed -i 's/, *"/\"/g' "$INSTALL_DIR/pyproject.toml" 2>/dev/null || true
 fi
 
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet

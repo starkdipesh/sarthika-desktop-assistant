@@ -23,6 +23,8 @@ zip -q -r "$OUTPUT_ZIP" \
     LICENSE \
     run.py \
     run.sh \
+    run.bat \
+    install.sh \
     sarthika-code.desktop \
     App_Setup.md \
     -x "*.pyc" "__pycache__/*" "*/__pycache__/*" "*.gguf" "*.sqlite*" "*.db" ".venv/*" ".git/*"
