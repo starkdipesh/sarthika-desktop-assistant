@@ -34,21 +34,40 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
 
     # Create virtual environment
     echo "• Creating local virtual environment in .venv..."
-    if ! "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv"; then
+    if ! "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv" 2>/dev/null; then
         echo "=================================================================="
-        echo "Notice: On Ubuntu/Debian, the 'python3-venv' package may be required."
-        echo "Please run: sudo apt install -y python3-venv python3-pip"
-        echo "Then run ./run.sh again."
+        echo "Notice: 'python3-venv' is missing on your system."
+        echo "Attempting to install python3-venv and python3-pip..."
         echo "=================================================================="
-        exit 1
+        if command -v sudo &>/dev/null; then
+            sudo apt update && sudo apt install -y python3-venv python3-pip
+            "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv"
+        fi
+        
+        if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
+            echo "=================================================================="
+            echo "Error: Virtual environment could not be created."
+            echo "Please run this command once to enable Python apps on Ubuntu:"
+            echo "   sudo apt install -y python3-venv python3-pip"
+            echo "Then run ./run.sh again."
+            echo "=================================================================="
+            if command -v zenity &>/dev/null; then
+                zenity --error --title="Sarthika Code Setup" --text="Missing Python package.\nPlease run in terminal:\nsudo apt install -y python3-venv python3-pip" 2>/dev/null || true
+            fi
+            exit 1
+        fi
     fi
 
     # Install package dependencies
     echo "• Installing dependencies (PySide6, SQLAlchemy, httpx)..."
     notify_user "Installing dependencies... This will take about 1-2 minutes."
     "$SCRIPT_DIR/.venv/bin/pip" install --upgrade pip --quiet
-    if ! "$SCRIPT_DIR/.venv/bin/pip" install -e "$SCRIPT_DIR" --quiet; then
-        echo "Failed to install dependencies."
+    if ! "$SCRIPT_DIR/.venv/bin/pip" install -e "$SCRIPT_DIR"; then
+        echo "=================================================================="
+        echo "Error: Failed to install application dependencies."
+        echo "Please check your internet connection and try again."
+        echo "=================================================================="
+        rm -rf "$SCRIPT_DIR/.venv" 2>/dev/null || true
         exit 1
     fi
     echo "• Setup completed successfully!"
@@ -56,6 +75,11 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
 fi
 
 PYTHON_EXEC="$SCRIPT_DIR/.venv/bin/python"
+
+if [ ! -f "$PYTHON_EXEC" ]; then
+    echo "Error: Python environment is not initialized properly. Please re-run ./run.sh"
+    exit 1
+fi
 
 # 2. Register Linux Desktop shortcut in user application menu
 DESKTOP_DIR="$HOME/.local/share/applications"
