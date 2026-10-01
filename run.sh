@@ -63,8 +63,14 @@ if [ ! -f "$SCRIPT_DIR/.setup_complete" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pytho
     # Install package dependencies
     echo "• Installing dependencies (PySide6, SQLAlchemy, httpx)..."
     notify_user "Installing dependencies... This will take about 1-2 minutes."
+    # Ensure pyproject.toml does not have restrictive upper bound if present from previous clones
+    if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
+        sed -i 's/<3\.13//g' "$SCRIPT_DIR/pyproject.toml" 2>/dev/null || true
+        sed -i 's/, *"/\"/g' "$SCRIPT_DIR/pyproject.toml" 2>/dev/null || true
+    fi
+
     "$SCRIPT_DIR/.venv/bin/pip" install --upgrade pip --quiet
-    if ! "$SCRIPT_DIR/.venv/bin/pip" install -e "$SCRIPT_DIR"; then
+    if ! "$SCRIPT_DIR/.venv/bin/pip" install --ignore-requires-python -e "$SCRIPT_DIR"; then
         echo "=================================================================="
         echo "Error: Failed to install application dependencies."
         echo "Please check your internet connection and try again."

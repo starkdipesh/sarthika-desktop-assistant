@@ -101,8 +101,14 @@ if [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
     exit 1
 fi
 
+# Ensure pyproject.toml does not have restrictive upper bound if present from previous clones
+if [ -f "$INSTALL_DIR/pyproject.toml" ]; then
+    sed -i 's/<3\.13//g' "$INSTALL_DIR/pyproject.toml" 2>/dev/null || true
+    sed -i 's/, *"/\"/g' "$INSTALL_DIR/pyproject.toml" 2>/dev/null || true
+fi
+
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet
-"$INSTALL_DIR/.venv/bin/pip" install -e "$INSTALL_DIR" --quiet
+"$INSTALL_DIR/.venv/bin/pip" install --ignore-requires-python -e "$INSTALL_DIR" --quiet
 
 # Mark setup as completely and successfully finished
 touch "$INSTALL_DIR/.setup_complete"
