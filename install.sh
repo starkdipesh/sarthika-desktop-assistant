@@ -128,6 +128,15 @@ EOF
 chmod +x "$DESKTOP_ENTRY"
 chmod +x "$INSTALL_DIR/run.sh"
 
+# Also place on Desktop screen if ~/Desktop folder exists
+if [ -d "$HOME/Desktop" ]; then
+    cp "$DESKTOP_ENTRY" "$HOME/Desktop/sarthika-code.desktop"
+    chmod +x "$HOME/Desktop/sarthika-code.desktop"
+    if command -v gio &>/dev/null; then
+        gio set "$HOME/Desktop/sarthika-code.desktop" metadata::trusted true 2>/dev/null || true
+    fi
+fi
+
 # Refresh desktop database if tool is present
 if command -v update-desktop-database &>/dev/null; then
     update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
