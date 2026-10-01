@@ -23,38 +23,55 @@ notify_status() {
     echo "• $1"
 }
 
-# 1. Check & Install System Prerequisites (python3, venv, git, curl)
+# 1. Check & Install System Prerequisites (python3, python3-venv, python3-pip, git)
 echo "Step 1/4: Checking system requirements..."
 MISSING_PKGS=()
 
-if ! command -v git &>/dev/null; then
-    MISSING_PKGS+=("git")
-fi
-if ! command -v python3 &>/dev/null; then
-    MISSING_PKGS+=("python3" "python3-venv")
-elif ! python3 -m ensurepip --version &>/dev/null || (command -v dpkg &>/dev/null && ! dpkg -s python3-venv &>/dev/null); then
-    MISSING_PKGS+=("python3-venv")
-fi
-if ! command -v pip3 &>/dev/null && ! python3 -m pip --version &>/dev/null; then
-    MISSING_PKGS+=("python3-pip")
+for pkg in git python3 python3-venv python3-pip; do
+    if command -v dpkg &>/dev/null; then
+        if ! dpkg -s "$pkg" &>/dev/null; then
+            MISSING_PKGS+=("$pkg")
+        fi
+    elif ! command -v "$pkg" &>/dev/null; then
+        MISSING_PKGS+=("$pkg")
+    fi
+done
+
+# Extra check: ensure python3-venv / ensurepip module is genuinely operational
+if command -v python3 &>/dev/null && ! python3 -m ensurepip --version &>/dev/null; then
+    if [[ ! " ${MISSING_PKGS[*]} " =~ " python3-venv " ]]; then
+        MISSING_PKGS+=("python3-venv")
+    fi
 fi
 
 if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
     echo "The following system packages are required: ${MISSING_PKGS[*]}"
     echo "Installing missing packages with sudo (you may be asked for your password)..."
-    sudo apt update -qq
-    sudo apt install -y "${MISSING_PKGS[@]}"
+    if command -v sudo &>/dev/null; then
+        sudo apt update -qq
+        sudo apt install -y "${MISSING_PKGS[@]}"
+    else
+        apt update -qq
+        apt install -y "${MISSING_PKGS[@]}"
+    fi
 fi
 
 # 2. Setup Application Directory in hidden/system user space (~/.local/share/sarthika-code)
 echo "Step 2/4: Setting up application files..."
-if [ -d "$INSTALL_DIR/.git" ]; then
-    notify_status "Updating existing Sarthika Code installation..."
-    cd "$INSTALL_DIR"
-    git pull --quiet || true
+if [ -d "$INSTALL_DIR" ]; then
+    if [ -d "$INSTALL_DIR/.git" ] && git -C "$INSTALL_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
+        notify_status "Updating existing Sarthika Code installation..."
+        cd "$INSTALL_DIR"
+        git pull --quiet || true
+    else
+        notify_status "Cleaning up previously interrupted download..."
+        rm -rf "$INSTALL_DIR"
+        mkdir -p "$(dirname "$INSTALL_DIR")"
+        git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet
+        cd "$INSTALL_DIR"
+    fi
 else
     notify_status "Downloading Sarthika Code..."
-    rm -rf "$INSTALL_DIR"
     mkdir -p "$(dirname "$INSTALL_DIR")"
     git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" --quiet
     cd "$INSTALL_DIR"
@@ -64,8 +81,11 @@ fi
 echo "Step 3/4: Configuring Python environment and dependencies..."
 notify_status "Configuring dependencies (takes 1-2 minutes on first run)..."
 
-if [ ! -f "$INSTALL_DIR/.venv/bin/python" ] || [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
+# If previously terminated, broken, or incomplete, delete and start fresh
+if [ ! -f "$INSTALL_DIR/.setup_complete" ] || [ ! -f "$INSTALL_DIR/.venv/bin/pip" ] || [ ! -f "$INSTALL_DIR/.venv/bin/python" ]; then
+    echo "• Cleaning up any previous incomplete or terminated environment..."
     rm -rf "$INSTALL_DIR/.venv"
+    rm -f "$INSTALL_DIR/.setup_complete"
     python3 -m venv "$INSTALL_DIR/.venv" || true
 fi
 
@@ -83,6 +103,9 @@ fi
 
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet
 "$INSTALL_DIR/.venv/bin/pip" install -e "$INSTALL_DIR" --quiet
+
+# Mark setup as completely and successfully finished
+touch "$INSTALL_DIR/.setup_complete"
 
 # 4. Create Desktop Shortcut for Ubuntu App Launcher
 echo "Step 4/4: Registering Desktop launcher..."

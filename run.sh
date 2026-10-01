@@ -16,7 +16,7 @@ notify_user() {
 }
 
 # 1. Locate or create Python virtual environment
-if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pip" ]; then
+if [ ! -f "$SCRIPT_DIR/.setup_complete" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/python" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pip" ]; then
     echo "=================================================================="
     echo "Sarthika Code — First-Time Automatic Setup"
     echo "=================================================================="
@@ -72,6 +72,7 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pip"
         rm -rf "$SCRIPT_DIR/.venv" 2>/dev/null || true
         exit 1
     fi
+    touch "$SCRIPT_DIR/.setup_complete"
     echo "• Setup completed successfully!"
     echo "=================================================================="
 fi
