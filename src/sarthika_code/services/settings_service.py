@@ -60,6 +60,19 @@ class SettingsService:
 
         logger.info("Persisted updated application settings.")
 
+    def get_settings(self) -> AppSettings:
+        """Convenience alias for load_settings."""
+        return self.load_settings()
+
+    def update_settings(self, **kwargs: Any) -> AppSettings:
+        """Update specific settings attributes and persist them."""
+        settings = self.load_settings()
+        for k, v in kwargs.items():
+            if hasattr(settings, k):
+                setattr(settings, k, v)
+        self.save_settings(settings)
+        return settings
+
     def validate_settings(self, settings: AppSettings) -> None:
         """Enforce architectural security and boundary constraints on settings."""
         # Enforce localhost only
