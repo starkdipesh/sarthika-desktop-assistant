@@ -32,7 +32,7 @@ if ! command -v git &>/dev/null; then
 fi
 if ! command -v python3 &>/dev/null; then
     MISSING_PKGS+=("python3" "python3-venv")
-elif ! python3 -m ensurepip --version &>/dev/null; then
+elif ! python3 -m ensurepip --version &>/dev/null || (command -v dpkg &>/dev/null && ! dpkg -s python3-venv &>/dev/null); then
     MISSING_PKGS+=("python3-venv")
 fi
 if ! command -v pip3 &>/dev/null && ! python3 -m pip --version &>/dev/null; then
@@ -64,9 +64,21 @@ fi
 echo "Step 3/4: Configuring Python environment and dependencies..."
 notify_status "Configuring dependencies (takes 1-2 minutes on first run)..."
 
-if [ ! -f "$INSTALL_DIR/.venv/bin/python" ]; then
+if [ ! -f "$INSTALL_DIR/.venv/bin/python" ] || [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
     rm -rf "$INSTALL_DIR/.venv"
-    python3 -m venv "$INSTALL_DIR/.venv"
+    python3 -m venv "$INSTALL_DIR/.venv" || true
+fi
+
+# Fallback: if pip is still missing, attempt bootstrap with ensurepip
+if [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
+    "$INSTALL_DIR/.venv/bin/python" -m ensurepip --upgrade 2>/dev/null || true
+fi
+
+if [ ! -f "$INSTALL_DIR/.venv/bin/pip" ]; then
+    echo "❌ Error: Virtual environment was created without pip."
+    echo "Please install python3-venv by running:"
+    echo "   sudo apt install -y python3-venv python3-pip"
+    exit 1
 fi
 
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet

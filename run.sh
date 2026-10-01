@@ -16,7 +16,7 @@ notify_user() {
 }
 
 # 1. Locate or create Python virtual environment
-if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
+if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pip" ]; then
     echo "=================================================================="
     echo "Sarthika Code — First-Time Automatic Setup"
     echo "=================================================================="
@@ -34,9 +34,10 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
 
     # Create virtual environment
     echo "• Creating local virtual environment in .venv..."
-    if ! "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv" 2>/dev/null; then
+    rm -rf "$SCRIPT_DIR/.venv"
+    if ! "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv" 2>/dev/null || [ ! -f "$SCRIPT_DIR/.venv/bin/pip" ]; then
         echo "=================================================================="
-        echo "Notice: 'python3-venv' is missing on your system."
+        echo "Notice: 'python3-venv' is missing or incomplete on your system."
         echo "Attempting to install python3-venv and python3-pip..."
         echo "=================================================================="
         if command -v sudo &>/dev/null; then
@@ -45,9 +46,9 @@ if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
             "$PY_BOOT" -m venv "$SCRIPT_DIR/.venv"
         fi
         
-        if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ]; then
+        if [ ! -f "$SCRIPT_DIR/.venv/bin/python" ] || [ ! -f "$SCRIPT_DIR/.venv/bin/pip" ]; then
             echo "=================================================================="
-            echo "Error: Virtual environment could not be created."
+            echo "Error: Virtual environment could not be created with pip."
             echo "Please run this command once to enable Python apps on Ubuntu:"
             echo "   sudo apt install -y python3-venv python3-pip"
             echo "Then run ./run.sh again."
