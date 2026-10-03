@@ -99,6 +99,7 @@ class LlamaCppProvider:
             "repeat_penalty": gen_settings.repeat_penalty,
             "stop": gen_settings.stop_tokens,
             "stream": True,
+            "cache_prompt": True,
         }
 
     async def stream_chat(

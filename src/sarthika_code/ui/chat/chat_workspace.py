@@ -154,9 +154,9 @@ class ChatWorkspace(QWidget):
         self._stream_accumulated_text = ""
         self._stream_dirty = False
 
-        # Throttled render timer (~25 FPS) prevents GUI freeze from continuous markdown re-parsing
+        # High-frequency stream render timer (40 FPS, 25ms) ensures text appears swiftly without UI freeze
         self._stream_render_timer = QTimer(self)
-        self._stream_render_timer.setInterval(40)
+        self._stream_render_timer.setInterval(25)
         self._stream_render_timer.timeout.connect(self._on_stream_render_tick)
 
         self._init_ui()
@@ -519,7 +519,7 @@ class ChatWorkspace(QWidget):
     def send_message(self, prompt: str) -> None:
         """Submit a user prompt and initiate background streaming generation."""
         if not self.active_chat:
-            selected_wf = self.combo_workflow.currentData() or "explain_code"
+            selected_wf = self.combo_workflow.currentData() or "general_chat"
             new_chat = self.chat_service.create_chat(workflow=selected_wf)
             self.active_chat = new_chat
             self.chat_title_updated.emit(new_chat.id, new_chat.title)
@@ -648,26 +648,33 @@ class ChatWorkspace(QWidget):
         self._stream_accumulated_text += delta
         self._stream_dirty = True
         if not self._stream_render_timer.isActive():
-            self._stream_render_timer.start()
+            self._stream_render_timer.start(25)
 
     def _on_stream_render_tick(self) -> None:
         if self._stream_dirty and self._active_stream_widget is not None:
-            self._active_stream_widget.set_content(self._stream_accumulated_text)
+            self._active_stream_widget.set_content(self._stream_accumulated_text, is_streaming=True)
             self._scroll_to_bottom()
             self._stream_dirty = False
+        else:
+            self._stream_render_timer.stop()
 
     def _on_generation_completed(self, full_text: str, total_tokens: int, duration_ms: int) -> None:
         if self._stream_render_timer.isActive():
             self._stream_render_timer.stop()
         if self._active_stream_widget is not None:
-            self._active_stream_widget.set_content(full_text)
-            self._active_stream_widget.finish_generation()
+            self._active_stream_widget.set_content(full_text, is_streaming=False)
+            self._active_stream_widget.finish_generation(total_tokens, duration_ms)
             self._scroll_to_bottom()
         self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)
         if self.active_chat is not None:
-            self.load_chat(self.active_chat.id)
+            updated_chat = self.chat_service.get_chat(self.active_chat.id)
+            if updated_chat:
+                self.active_chat = updated_chat
+                if updated_chat.title != self.lbl_chat_title.text():
+                    self.lbl_chat_title.setText(updated_chat.title)
+                    self.chat_title_updated.emit(updated_chat.id, updated_chat.title)
 
     def _on_generation_cancelled(self) -> None:
         if self._stream_render_timer.isActive():

@@ -90,7 +90,12 @@ def test_message_widget_user_and_assistant(qapp: QApplication) -> None:
     assert any("Sarthika Code" in lbl_text for lbl_text in asst_labels)
     assert hasattr(w_asst, "btn_copy_code")
     assert w_asst.btn_copy_code is not None
-    assert hasattr(w_asst, "btn_retry")
+    # Assistant empty placeholder message (waiting for streaming)
+    placeholder_msg = Message(id="m3", chat_id="c1", role="assistant", content="")
+    w_placeholder = MessageWidget(placeholder_msg)
+    assert not w_placeholder.is_user
+    assert hasattr(w_placeholder, "wavy_loader")
+    w_placeholder.close()
     w_asst.close()
 
 

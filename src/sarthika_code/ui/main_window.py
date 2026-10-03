@@ -583,8 +583,8 @@ class MainWindow(QMainWindow):
         """Reload conversation list from database into sidebar."""
         chats = self.chat_service.list_chats()
         if not chats:
-            # Create first initial chat with default workflow
-            default_wf = WorkflowRegistry.get_default_workflow().id
+            # Create first initial chat with general chat workflow
+            default_wf = "general_chat"
             first_chat = self.chat_service.create_chat(workflow=default_wf)
             chats = [first_chat]
             active_chat_id = first_chat.id
@@ -600,8 +600,8 @@ class MainWindow(QMainWindow):
         self.workspace.load_chat(chat_id)
 
     def _on_new_chat(self) -> None:
-        """Create a fresh conversation session with default workflow."""
-        default_wf = WorkflowRegistry.get_default_workflow().id
+        """Create a fresh conversation session with general chat workflow."""
+        default_wf = "general_chat"
         new_chat = self.chat_service.create_chat(workflow=default_wf)
         self._reload_chats(active_chat_id=new_chat.id)
 

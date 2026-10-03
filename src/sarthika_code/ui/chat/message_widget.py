@@ -55,11 +55,12 @@ class MessageWidget(QFrame):
         super().__init__(parent)
         self.message = message
         self.is_mock_mode = is_mock_mode
+        self.is_user = self.message.role == "user"
 
         self._init_ui()
 
     def _init_ui(self) -> None:
-        is_user = self.message.role == "user"
+        is_user = self.is_user
 
         self.setFrameShape(QFrame.Shape.NoFrame)
         if is_user:
@@ -300,21 +301,11 @@ class MessageWidget(QFrame):
 
             bottom_row.addStretch()
 
-            # Latency / tokens metrics
-            if self.message.token_count or self.message.generation_duration_ms:
-                metrics: list[str] = []
-                if self.message.token_count:
-                    metrics.append(f"{self.message.token_count} tokens")
-                if self.message.generation_duration_ms:
-                    sec = self.message.generation_duration_ms / 1000.0
-                    metrics.append(f"{sec:.1f}s")
-                    if self.message.token_count and sec > 0:
-                        tps = self.message.token_count / sec
-                        metrics.append(f"{tps:.1f} tok/s")
-
-                lbl_metrics = QLabel("  •  ".join(metrics))
-                lbl_metrics.setStyleSheet("color: #64748b; font-size: 11px;")
-                bottom_row.addWidget(lbl_metrics)
+            # Latency / tokens metrics badge
+            self.lbl_metrics = QLabel()
+            self.lbl_metrics.setStyleSheet("color: #64748b; font-size: 11px;")
+            self._update_metrics_badge()
+            bottom_row.addWidget(self.lbl_metrics)
 
             layout.addWidget(self.bottom_row_widget)
 
@@ -330,27 +321,50 @@ class MessageWidget(QFrame):
         else:
             self.wavy_loader.stop_animation()
 
-    def set_content(self, text: str) -> None:
+    def _update_metrics_badge(self) -> None:
+        """Format and display latency and token generation metrics."""
+        if not hasattr(self, "lbl_metrics"):
+            return
+        if self.message.token_count or self.message.generation_duration_ms:
+            metrics: list[str] = []
+            if self.message.token_count:
+                metrics.append(f"{self.message.token_count} tokens")
+            if self.message.generation_duration_ms:
+                sec = self.message.generation_duration_ms / 1000.0
+                metrics.append(f"{sec:.1f}s")
+                if self.message.token_count and sec > 0:
+                    tps = self.message.token_count / sec
+                    metrics.append(f"{tps:.1f} tok/s")
+            self.lbl_metrics.setText("  •  ".join(metrics))
+            self.lbl_metrics.setVisible(True)
+        else:
+            self.lbl_metrics.setVisible(False)
+
+    def set_content(self, text: str, is_streaming: bool = False) -> None:
         """Update content safely rendering markdown, stopping wavy loader once tokens arrive."""
         self.message.content = text
         if text.strip():
             if hasattr(self, "wavy_loader") and self.wavy_loader.isVisible():
                 self.wavy_loader.stop_animation()
-            self.content_browser.setVisible(True)
-            if hasattr(self, "bottom_row_widget"):
+            if not self.content_browser.isVisible():
+                self.content_browser.setVisible(True)
+            if hasattr(self, "bottom_row_widget") and not self.bottom_row_widget.isVisible():
                 self.bottom_row_widget.setVisible(True)
 
             self.content_browser.setMarkdown(text)
-            # Recalculate height dynamically to fit content without nested scrollbars
-            self.content_browser.document().setTextWidth(self.content_browser.width() if self.content_browser.width() > 100 else 760)
+            # Recalculate height dynamically without thrashing layout
+            target_width = self.content_browser.width() if self.content_browser.width() > 100 else 760
+            if self.content_browser.document().textWidth() != target_width:
+                self.content_browser.document().setTextWidth(target_width)
             doc_height = int(self.content_browser.document().size().height())
             self.content_browser.setFixedHeight(max(36, doc_height + 20))
 
-            # Refresh code block extraction
-            self.code_blocks = extract_code_blocks(text)
-            if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
-                self.btn_copy_code.setVisible(bool(self.code_blocks))
-                self.btn_copy_code.setEnabled(True)
+            # Only run code block regex extraction when not actively streaming
+            if not is_streaming:
+                self.code_blocks = extract_code_blocks(text)
+                if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
+                    self.btn_copy_code.setVisible(bool(self.code_blocks))
+                    self.btn_copy_code.setEnabled(True)
         else:
             if not self.is_user and hasattr(self, "wavy_loader"):
                 self.content_browser.setVisible(False)
@@ -358,13 +372,25 @@ class MessageWidget(QFrame):
                     self.bottom_row_widget.setVisible(False)
                 self.wavy_loader.start_animation()
 
-    def finish_generation(self) -> None:
+    def finish_generation(self, total_tokens: int | None = None, duration_ms: int | None = None) -> None:
         """Ensure wavy loader is stopped and bottom actions are visible upon completion."""
         if hasattr(self, "wavy_loader"):
             self.wavy_loader.stop_animation()
         self.content_browser.setVisible(True)
         if hasattr(self, "bottom_row_widget"):
             self.bottom_row_widget.setVisible(True)
+
+        if total_tokens is not None:
+            self.message.token_count = total_tokens
+        if duration_ms is not None:
+            self.message.generation_duration_ms = duration_ms
+        self._update_metrics_badge()
+
+        # Finalize code blocks extraction
+        self.code_blocks = extract_code_blocks(self.message.content)
+        if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
+            self.btn_copy_code.setVisible(bool(self.code_blocks))
+            self.btn_copy_code.setEnabled(True)
 
     def _copy_text(self) -> None:
         clipboard = QGuiApplication.clipboard()

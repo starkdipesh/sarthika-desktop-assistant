@@ -190,8 +190,10 @@ class LlamaServerManager:
             old_path = env.get("PATH", "")
             env["PATH"] = f"{exec_parent};{old_path}" if old_path else exec_parent
 
-        # Enable Flash Attention portably via standard llama.cpp environment variable
+        # Enable Flash Attention, CPU-only execution, and KV cache reuse portably via llama.cpp environment variables
         env["LLAMA_ARG_FLASH_ATTN"] = "1"
+        env["LLAMA_ARG_N_GPU_LAYERS"] = "0"
+        env["LLAMA_ARG_CACHE_REUSE"] = "64"
 
         try:
             # Spawn process without shell=True
@@ -229,6 +231,11 @@ class LlamaServerManager:
             returncode = self._process.poll()
             if returncode is not None:
                 err_detail = f"Process exited with code {returncode}"
+                if self._log_file and self._log_file.is_file():
+                    with contextlib.suppress(Exception):
+                        tail = self._log_file.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-5:]
+                        if tail:
+                            err_detail += f" ({' | '.join(tail)})"
                 self._set_status(ServerState.START_FAILED, f"Server failed to start ({err_detail}).", last_error=err_detail)
                 raise ServerError(
                     f"llama-server terminated unexpectedly during startup ({err_detail}).",

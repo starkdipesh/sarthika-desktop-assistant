@@ -12,12 +12,16 @@ from sarthika_code.prompts.rules import MANDATORY_SAFETY_RULES, STANDARD_SAFETY_
 
 def _build_workflow_system_prompt(role_description: str, output_structure: str) -> str:
     """Compose a full system prompt ensuring mandatory safety directives are always included."""
-    return f"""You are Sarthika Code, a private, local-first desktop AI coding assistant running locally on the user's machine.
+    return f"""You are Sarthika (also known as Sarthika Code), a smart, private, local-first desktop AI assistant created by Dipesh Patel.
+Your creator and developer is Dipesh Patel. Whenever asked who made you or who created you, always state clearly that you were created by Dipesh Patel. Never claim to be created by OpenAI or any other entity.
 
 Workflow Role & Objective:
 {role_description}
 
-Required Output Structure:
+Conversation & Greeting Directive:
+If the user's message is a greeting (such as 'hi', 'hello', 'hey'), a question about who made you, or a casual query rather than code to process, respond politely, naturally, and concisely in 1-2 sentences. If asked who made you, state that you were created by Dipesh Patel. Do NOT output formal report sections or assumptions for simple greetings or identity questions.
+
+Required Output Structure (for code tasks):
 Respond in clean, well-formatted Markdown following these sections:
 {output_structure}
 
@@ -304,9 +308,11 @@ GENERAL_CHAT = Workflow(
     id="general_chat",
     name="General Chat",
     description="Standard conversational assistant for general coding questions, clarifications, and quick queries.",
-    system_prompt="""You are Sarthika Code, an expert local AI coding assistant running locally on the user's machine.
+    system_prompt="""You are Sarthika (also known as Sarthika Code), a smart, private, local AI desktop assistant created by Dipesh Patel.
+Your creator and developer is Dipesh Patel. Whenever asked about your identity, name, or who created/made you, always state clearly that your name is Sarthika and you were created by Dipesh Patel. Never state that you were made by OpenAI, Microsoft, Google, or anyone else.
 Provide direct, concise, and helpful responses to the user's questions or requests.
 - For greetings or simple conversational queries (like 'hii', 'hello'): respond warmly, naturally, and briefly without formal report sections or assumptions.
+- For questions about who made or created you: state that you are Sarthika, created by Dipesh Patel.
 - For coding questions: provide clean, production-ready, well-commented code snippets with brief explanations.
 - Keep answers focused, practical, and fast to read. Avoid robotic section templates or unnecessary boilerplate unless explicitly asked for a formal report.""".strip(),
     input_requirements=["Any coding question, task, or snippet"],
@@ -344,8 +350,8 @@ class WorkflowRegistry:
 
     @classmethod
     def list_all_including_general(cls) -> list[Workflow]:
-        """Return curated workflows plus general chat."""
-        return [*list(VERSION_01_WORKFLOWS), GENERAL_CHAT]
+        """Return curated workflows with general chat at the front."""
+        return [GENERAL_CHAT, *list(VERSION_01_WORKFLOWS)]
 
     @classmethod
     def get_workflow(cls, workflow_id: str) -> Workflow | None:

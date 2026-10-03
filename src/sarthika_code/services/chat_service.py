@@ -36,7 +36,8 @@ from sarthika_code.utils.logging import get_logger
 logger = get_logger("ChatService")
 
 DEFAULT_SYSTEM_PROMPT = (
-    "You are Sarthika Code, a private, local-first AI coding assistant running entirely on the user's computer. "
+    "You are Sarthika (also known as Sarthika Code), a smart, private, local AI desktop assistant created by Dipesh Patel. "
+    "Your creator and developer is Dipesh Patel. Whenever asked who made you or who created you, always state clearly that you were created by Dipesh Patel. "
     "Provide clear, accurate, and concise code explanations, debugging advice, and implementations. "
     "Never claim to execute code, run terminal commands, or modify files directly."
 )
@@ -328,9 +329,9 @@ class ChatService:
                     token_count += 1
                     yield event
 
-                    # Checkpoint to SQLite every 2 seconds or 20 tokens to guarantee persistence on crash
+                    # Checkpoint to SQLite periodically (every 3.5s) to guarantee persistence without stalling the stream
                     now = time.monotonic()
-                    if token_count % 20 == 0 or (now - last_checkpoint_time) > 2.0:
+                    if (now - last_checkpoint_time) >= 3.5:
                         self.update_assistant_message(
                             assistant_message_id,
                             "".join(accumulated_chunks),
