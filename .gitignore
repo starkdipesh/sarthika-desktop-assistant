@@ -41,6 +41,7 @@ pip-delete-this-directory.txt
 *.zip
 *.tar.gz
 .setup_complete
+/bin/
 
 # Benchmark results
 benchmarks/*.json

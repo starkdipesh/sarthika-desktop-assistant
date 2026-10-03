@@ -129,7 +129,6 @@ class LlamaServerManager:
             "--parallel", "1",
             "--batch-size", "512",
             "--ubatch-size", "512",
-            "--flash-attn",
         ]
 
     def start_server(
@@ -190,6 +189,9 @@ class LlamaServerManager:
         else:
             old_path = env.get("PATH", "")
             env["PATH"] = f"{exec_parent};{old_path}" if old_path else exec_parent
+
+        # Enable Flash Attention portably via standard llama.cpp environment variable
+        env["LLAMA_ARG_FLASH_ATTN"] = "1"
 
         try:
             # Spawn process without shell=True
