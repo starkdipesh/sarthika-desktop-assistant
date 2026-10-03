@@ -304,16 +304,13 @@ GENERAL_CHAT = Workflow(
     id="general_chat",
     name="General Chat",
     description="Standard conversational assistant for general coding questions, clarifications, and quick queries.",
-    system_prompt=_build_workflow_system_prompt(
-        role_description="Provide clear, accurate, and concise code explanations, debugging advice, and implementations.",
-        output_structure="""- ## Summary: Direct answer to the user's question or request.
-- ## Assumptions: Any assumptions made about environment or requirements.
-- ## Explanation / Implementation: Detailed explanation or code example.
-- ## Risks: Any caveats, trade-offs, or edge cases.
-- ## Suggested Next Steps: Local testing and verification recommendations.""",
-    ),
+    system_prompt="""You are Sarthika Code, an expert local AI coding assistant running locally on the user's machine.
+Provide direct, concise, and helpful responses to the user's questions or requests.
+- For greetings or simple conversational queries (like 'hii', 'hello'): respond warmly, naturally, and briefly without formal report sections or assumptions.
+- For coding questions: provide clean, production-ready, well-commented code snippets with brief explanations.
+- Keep answers focused, practical, and fast to read. Avoid robotic section templates or unnecessary boilerplate unless explicitly asked for a formal report.""".strip(),
     input_requirements=["Any coding question, task, or snippet"],
-    output_format="Structured Markdown with clear explanations and example code.",
+    output_format="Clean, natural conversational Markdown.",
     safety_disclaimer=STANDARD_SAFETY_DISCLAIMER,
     recommended_language=["Any"],
 )

@@ -302,7 +302,7 @@ class ChatService:
 
         for idx, m in enumerate(history):
             content = m.content
-            if m.role == "user" and DELIMITER_START not in content:
+            if m.role == "user" and workflow_id != "general_chat" and DELIMITER_START not in content:
                 content = PromptBuilder.build_user_message(content)
             # If this is the latest user turn and file context is provided, attach context
             if idx == len(history) - 1 and m.role == "user" and file_context_prompt:
@@ -489,14 +489,14 @@ class ChatService:
         messages_preview = [{"role": "system", "content": system_content}]
         for idx, m in enumerate(raw_messages):
             content = m.content
-            if m.role == "user" and DELIMITER_START not in content:
+            if m.role == "user" and workflow_id != "general_chat" and DELIMITER_START not in content:
                 content = PromptBuilder.build_user_message(content)
             if idx == len(raw_messages) - 1 and m.role == "user" and file_context_prompt and not new_user_prompt:
                 content = f"{file_context_prompt}\n\n{content}"
             messages_preview.append({"role": m.role, "content": content})
 
         if new_user_prompt:
-            delimited = PromptBuilder.build_user_message(new_user_prompt)
+            delimited = PromptBuilder.build_user_message(new_user_prompt) if workflow_id != "general_chat" else new_user_prompt
             if file_context_prompt:
                 delimited = f"{file_context_prompt}\n\n{delimited}"
             messages_preview.append({"role": "user", "content": delimited})

@@ -661,6 +661,7 @@ class ChatWorkspace(QWidget):
             self._stream_render_timer.stop()
         if self._active_stream_widget is not None:
             self._active_stream_widget.set_content(full_text)
+            self._active_stream_widget.finish_generation()
             self._scroll_to_bottom()
         self._stream_dirty = False
         self._cleanup_worker()
@@ -671,6 +672,8 @@ class ChatWorkspace(QWidget):
     def _on_generation_cancelled(self) -> None:
         if self._stream_render_timer.isActive():
             self._stream_render_timer.stop()
+        if self._active_stream_widget is not None:
+            self._active_stream_widget.finish_generation()
         self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)
@@ -680,6 +683,8 @@ class ChatWorkspace(QWidget):
     def _on_generation_error(self, error_msg: str) -> None:
         if self._stream_render_timer.isActive():
             self._stream_render_timer.stop()
+        if self._active_stream_widget is not None:
+            self._active_stream_widget.finish_generation()
         self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from sarthika_code.domain.chat import Message
+from sarthika_code.ui.chat.wavy_loader import WavyLoaderWidget
 
 if TYPE_CHECKING:
     pass
@@ -190,13 +191,19 @@ class MessageWidget(QFrame):
             "th, td { border: 1px solid #23334d; padding: 7px 12px; text-align: left; }"
             "th { background-color: #111d33; color: #f8fafc; font-weight: bold; }"
         )
+        # Wavy loader for assistant messages while waiting for model generation
+        self.wavy_loader = WavyLoaderWidget(self)
+        layout.addWidget(self.wavy_loader)
+
         self.set_content(self.message.content)
         layout.addWidget(self.content_browser)
 
         # Bottom Actions & Metrics row for assistant
         self.code_blocks = extract_code_blocks(self.message.content)
         if not is_user:
-            bottom_row = QHBoxLayout()
+            self.bottom_row_widget = QWidget()
+            bottom_row = QHBoxLayout(self.bottom_row_widget)
+            bottom_row.setContentsMargins(0, 0, 0, 0)
             bottom_row.setSpacing(6)
 
             # Copy Response text button
@@ -309,22 +316,55 @@ class MessageWidget(QFrame):
                 lbl_metrics.setStyleSheet("color: #64748b; font-size: 11px;")
                 bottom_row.addWidget(lbl_metrics)
 
-            layout.addLayout(bottom_row)
+            layout.addWidget(self.bottom_row_widget)
+
+            # If initially empty, animate wavy loader and hide content/actions until first token
+            if not self.message.content.strip():
+                self.content_browser.setVisible(False)
+                self.bottom_row_widget.setVisible(False)
+                self.wavy_loader.start_animation()
+            else:
+                self.wavy_loader.stop_animation()
+                self.content_browser.setVisible(True)
+                self.bottom_row_widget.setVisible(True)
+        else:
+            self.wavy_loader.stop_animation()
 
     def set_content(self, text: str) -> None:
-        """Update content safely rendering markdown."""
+        """Update content safely rendering markdown, stopping wavy loader once tokens arrive."""
         self.message.content = text
-        self.content_browser.setMarkdown(text)
-        # Recalculate height dynamically to fit content without nested scrollbars
-        self.content_browser.document().setTextWidth(self.content_browser.width() if self.content_browser.width() > 100 else 760)
-        doc_height = int(self.content_browser.document().size().height())
-        self.content_browser.setFixedHeight(max(36, doc_height + 20))
+        if text.strip():
+            if hasattr(self, "wavy_loader") and self.wavy_loader.isVisible():
+                self.wavy_loader.stop_animation()
+            self.content_browser.setVisible(True)
+            if hasattr(self, "bottom_row_widget"):
+                self.bottom_row_widget.setVisible(True)
 
-        # Refresh code block extraction
-        self.code_blocks = extract_code_blocks(text)
-        if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
-            self.btn_copy_code.setVisible(bool(self.code_blocks))
-            self.btn_copy_code.setEnabled(True)
+            self.content_browser.setMarkdown(text)
+            # Recalculate height dynamically to fit content without nested scrollbars
+            self.content_browser.document().setTextWidth(self.content_browser.width() if self.content_browser.width() > 100 else 760)
+            doc_height = int(self.content_browser.document().size().height())
+            self.content_browser.setFixedHeight(max(36, doc_height + 20))
+
+            # Refresh code block extraction
+            self.code_blocks = extract_code_blocks(text)
+            if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
+                self.btn_copy_code.setVisible(bool(self.code_blocks))
+                self.btn_copy_code.setEnabled(True)
+        else:
+            if not self.is_user and hasattr(self, "wavy_loader"):
+                self.content_browser.setVisible(False)
+                if hasattr(self, "bottom_row_widget"):
+                    self.bottom_row_widget.setVisible(False)
+                self.wavy_loader.start_animation()
+
+    def finish_generation(self) -> None:
+        """Ensure wavy loader is stopped and bottom actions are visible upon completion."""
+        if hasattr(self, "wavy_loader"):
+            self.wavy_loader.stop_animation()
+        self.content_browser.setVisible(True)
+        if hasattr(self, "bottom_row_widget"):
+            self.bottom_row_widget.setVisible(True)
 
     def _copy_text(self) -> None:
         clipboard = QGuiApplication.clipboard()
