@@ -118,17 +118,25 @@ class ModelDownloadService:
         """Resolve the expected path to the local llama-server executable."""
         self.paths.ensure_directories()
         exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
-        return self.paths.bin_dir / exec_name
+        standard_path = self.paths.bin_dir / exec_name
+        if standard_path.exists() and standard_path.is_file():
+            return standard_path
+
+        # Check repository root bin directory
+        root_bin = Path(__file__).resolve().parent.parent.parent.parent / "bin" / exec_name
+        if root_bin.exists() and root_bin.is_file():
+            return root_bin
+
+        return standard_path
 
     def is_engine_available(self) -> bool:
-        """Check if llama-server binary is present in bin_dir or system PATH."""
+        """Check if llama-server binary is present in bin_dir, repo bin, or system PATH."""
         dest = self.get_engine_destination_path()
         if dest.exists() and dest.is_file():
             if sys.platform != "win32" and not os.access(dest, os.X_OK):
                 with contextlib.suppress(OSError):
                     dest.chmod(dest.stat().st_mode | 0o755)
             return True
-
 
         exec_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
         return shutil.which(exec_name) is not None
@@ -309,29 +317,41 @@ class ModelDownloadService:
                                     on_progress(progress)
                                 last_update = now
 
-            # Extract archive
+            # Extract archive (deliver complete engine folder including runtime shared libraries)
             progress.status = "extracting"
-            progress.message = "Extracting inference engine..."
+            progress.message = "Extracting inference engine and runtime shared libraries..."
             if on_progress:
                 on_progress(progress)
 
             target_binary_name = "llama-server.exe" if platform_key == "win32" else "llama-server"
+            extracted_count = 0
+
             if zipfile.is_zipfile(archive_path):
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
-                    for member in zip_ref.namelist():
-                        if os.path.basename(member).lower() == target_binary_name.lower():
-                            with zip_ref.open(member) as source, open(dest_binary, "wb") as target:
-                                shutil.copyfileobj(source, target)
-                            break
+                    for member in zip_ref.infolist():
+                        if member.is_dir():
+                            continue
+                        fname = os.path.basename(member.filename)
+                        if not fname:
+                            continue
+                        out_target = self.paths.bin_dir / fname
+                        with zip_ref.open(member) as source, open(out_target, "wb") as target:
+                            shutil.copyfileobj(source, target)
+                        extracted_count += 1
             else:
                 with tarfile.open(archive_path, "r:*") as tar_ref:
                     for member in tar_ref.getmembers():
-                        if os.path.basename(member.name).lower() == target_binary_name.lower():
-                            extracted_file = tar_ref.extractfile(member)
-                            if extracted_file:
-                                with open(dest_binary, "wb") as target:
-                                    shutil.copyfileobj(extracted_file, target)
-                                break
+                        if not member.isfile():
+                            continue
+                        fname = os.path.basename(member.name)
+                        if not fname:
+                            continue
+                        extracted_file = tar_ref.extractfile(member)
+                        if extracted_file:
+                            out_target = self.paths.bin_dir / fname
+                            with open(out_target, "wb") as target:
+                                shutil.copyfileobj(extracted_file, target)
+                            extracted_count += 1
 
             if archive_path.exists():
                 archive_path.unlink()
@@ -340,14 +360,17 @@ class ModelDownloadService:
                 raise RuntimeError("Extracted archive did not contain llama-server binary.")
 
             if sys.platform != "win32":
-                dest_binary.chmod(dest_binary.stat().st_mode | 0o755)
+                for item in self.paths.bin_dir.iterdir():
+                    if item.is_file():
+                        with contextlib.suppress(OSError):
+                            item.chmod(item.stat().st_mode | 0o755)
 
             progress.status = "completed"
             progress.message = "AI Engine setup completed!"
             if on_progress:
                 on_progress(progress)
 
-            logger.info("Successfully extracted llama-server to %s", dest_binary)
+            logger.info("Successfully extracted complete engine suite (%d files) to %s", extracted_count, self.paths.bin_dir)
             return dest_binary
 
         except Exception as exc:

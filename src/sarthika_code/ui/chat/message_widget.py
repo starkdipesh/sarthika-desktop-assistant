@@ -313,11 +313,18 @@ class MessageWidget(QFrame):
 
     def set_content(self, text: str) -> None:
         """Update content safely rendering markdown."""
+        self.message.content = text
         self.content_browser.setMarkdown(text)
         # Recalculate height dynamically to fit content without nested scrollbars
         self.content_browser.document().setTextWidth(self.content_browser.width() if self.content_browser.width() > 100 else 760)
         doc_height = int(self.content_browser.document().size().height())
         self.content_browser.setFixedHeight(max(36, doc_height + 20))
+
+        # Refresh code block extraction
+        self.code_blocks = extract_code_blocks(text)
+        if hasattr(self, "btn_copy_code") and self.btn_copy_code is not None:
+            self.btn_copy_code.setVisible(bool(self.code_blocks))
+            self.btn_copy_code.setEnabled(True)
 
     def _copy_text(self) -> None:
         clipboard = QGuiApplication.clipboard()

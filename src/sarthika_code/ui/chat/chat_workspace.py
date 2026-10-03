@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -152,6 +152,12 @@ class ChatWorkspace(QWidget):
         self._worker: ChatStreamWorker | None = None
         self._active_stream_widget: MessageWidget | None = None
         self._stream_accumulated_text = ""
+        self._stream_dirty = False
+
+        # Throttled render timer (~25 FPS) prevents GUI freeze from continuous markdown re-parsing
+        self._stream_render_timer = QTimer(self)
+        self._stream_render_timer.setInterval(40)
+        self._stream_render_timer.timeout.connect(self._on_stream_render_tick)
 
         self._init_ui()
 
@@ -640,23 +646,41 @@ class ChatWorkspace(QWidget):
 
     def _on_token_received(self, delta: str) -> None:
         self._stream_accumulated_text += delta
-        if self._active_stream_widget is not None:
+        self._stream_dirty = True
+        if not self._stream_render_timer.isActive():
+            self._stream_render_timer.start()
+
+    def _on_stream_render_tick(self) -> None:
+        if self._stream_dirty and self._active_stream_widget is not None:
             self._active_stream_widget.set_content(self._stream_accumulated_text)
             self._scroll_to_bottom()
+            self._stream_dirty = False
 
     def _on_generation_completed(self, full_text: str, total_tokens: int, duration_ms: int) -> None:
+        if self._stream_render_timer.isActive():
+            self._stream_render_timer.stop()
+        if self._active_stream_widget is not None:
+            self._active_stream_widget.set_content(full_text)
+            self._scroll_to_bottom()
+        self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)
         if self.active_chat is not None:
             self.load_chat(self.active_chat.id)
 
     def _on_generation_cancelled(self) -> None:
+        if self._stream_render_timer.isActive():
+            self._stream_render_timer.stop()
+        self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)
         if self.active_chat is not None:
             self.load_chat(self.active_chat.id)
 
     def _on_generation_error(self, error_msg: str) -> None:
+        if self._stream_render_timer.isActive():
+            self._stream_render_timer.stop()
+        self._stream_dirty = False
         self._cleanup_worker()
         self.input_bar.set_generating(False)
         QMessageBox.warning(self, "Generation Interrupted", f"Generation error: {error_msg}")
@@ -664,6 +688,9 @@ class ChatWorkspace(QWidget):
             self.load_chat(self.active_chat.id)
 
     def _cleanup_worker(self) -> None:
+        if self._stream_render_timer.isActive():
+            self._stream_render_timer.stop()
+        self._stream_dirty = False
         if self._worker_thread is not None and self._worker_thread.isRunning():
             self._worker_thread.quit()
             self._worker_thread.wait()

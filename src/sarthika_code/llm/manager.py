@@ -8,6 +8,7 @@ health checking, crash detection, graceful stop, and force termination.
 from __future__ import annotations
 
 import contextlib
+import os
 import subprocess
 import sys
 import threading
@@ -96,12 +97,14 @@ class LlamaServerManager:
 
     @staticmethod
     def build_command_args(config: ModelConfiguration) -> list[str]:
-        """Construct a safe, validated argument array for llama-server.
+        """Construct a safe, validated, high-throughput argument array for llama-server.
 
         Guarantees:
         - No shell command strings (returns list of strings)
         - Host is strictly 127.0.0.1
-        - Conservative, cross-version supported arguments
+        - Dedicated single-slot execution (--parallel 1) to maximize inference throughput
+        - Multi-core batch prompt ingestion (--threads-batch, --batch-size 512, --ubatch-size 512)
+        - Flash attention (--flash-attn) for reduced memory overhead and faster generation
         """
         if config.host not in ("127.0.0.1", "localhost"):
             raise ConfigurationError(
@@ -109,13 +112,24 @@ class LlamaServerManager:
                 user_guidance="For security and privacy, only local loopback (127.0.0.1) is permitted.",
             )
 
+        cpu_count = os.cpu_count() or 4
+        # Inference decoding threads (optimal CPU range: 2-8 to prevent cache thrashing)
+        infer_threads = config.threads if config.threads > 0 else max(2, min(cpu_count, 8))
+        # Batch prompt ingestion threads (scales across all available CPU cores)
+        batch_threads = max(2, cpu_count)
+
         return [
             str(config.executable_path),
             "--model", str(config.model_path),
             "--host", "127.0.0.1",
             "--port", str(config.port),
             "--ctx-size", str(config.context_size),
-            "--threads", str(max(1, config.threads)),
+            "--threads", str(infer_threads),
+            "--threads-batch", str(batch_threads),
+            "--parallel", "1",
+            "--batch-size", "512",
+            "--ubatch-size", "512",
+            "--flash-attn",
         ]
 
     def start_server(
@@ -167,6 +181,16 @@ class LlamaServerManager:
             self._log_file = self.log_dir / "llama_server.log"
             log_fp = open(self._log_file, "a", encoding="utf-8")  # noqa: SIM115
 
+        # Ensure directory containing llama-server and runtime shared libraries (.so / .dll) is in search path
+        env = os.environ.copy()
+        exec_parent = str(Path(config.executable_path).parent.resolve())
+        if sys.platform != "win32":
+            old_ld = env.get("LD_LIBRARY_PATH", "")
+            env["LD_LIBRARY_PATH"] = f"{exec_parent}:{old_ld}" if old_ld else exec_parent
+        else:
+            old_path = env.get("PATH", "")
+            env["PATH"] = f"{exec_parent};{old_path}" if old_path else exec_parent
+
         try:
             # Spawn process without shell=True
             creation_flags = 0
@@ -179,6 +203,7 @@ class LlamaServerManager:
                 stderr=log_fp or subprocess.PIPE,
                 text=True,
                 creationflags=creation_flags,
+                env=env,
             )
             pid = self._process.pid
             logger.info("Spawned llama-server subprocess with PID %d at %s", pid, server_url)

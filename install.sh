@@ -106,46 +106,48 @@ fi
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip --quiet
 "$INSTALL_DIR/.venv/bin/pip" install --ignore-requires-python -e "$INSTALL_DIR" --quiet
 
-# 3b. Install & Configure llama-server local AI engine
-echo "Installing and configuring local llama-server engine..."
+# 3b. Install & Configure full local AI engine suite (llama-server and shared runtime libraries)
+echo "Installing and configuring local AI engine runtime suite..."
 BIN_DIR="$INSTALL_DIR/bin"
 DATA_BIN_DIR="$HOME/.local/share/sarthika_code/bin"
 mkdir -p "$BIN_DIR" "$DATA_BIN_DIR"
 
-if [ ! -f "$BIN_DIR/llama-server" ] || [ ! -x "$BIN_DIR/llama-server" ]; then
-    echo "• Downloading pre-built llama-server for Ubuntu..."
+if [ ! -f "$BIN_DIR/llama-server" ] || [ ! -x "$BIN_DIR/llama-server" ] || [ ! -f "$BIN_DIR/libllama.so" ]; then
+    echo "• Downloading pre-built engine runtime suite for Ubuntu..."
     LLAMA_ZIP="/tmp/llama-server-ubuntu.zip"
     LLAMA_URL="https://github.com/ggml-org/llama.cpp/releases/download/b4776/llama-b4776-bin-ubuntu-x64.zip"
 
     if curl -sSL --connect-timeout 15 --max-time 180 -o "$LLAMA_ZIP" "$LLAMA_URL"; then
-        echo "• Extracting llama-server..."
+        echo "• Extracting engine binaries and shared runtime libraries..."
         if command -v unzip &>/dev/null; then
-            unzip -q -j "$LLAMA_ZIP" "build/bin/llama-server" -d "$BIN_DIR" 2>/dev/null || unzip -q -j "$LLAMA_ZIP" "*llama-server" -d "$BIN_DIR" 2>/dev/null || true
+            unzip -q -o -j "$LLAMA_ZIP" "build/bin/*" -d "$BIN_DIR" 2>/dev/null || unzip -q -o -j "$LLAMA_ZIP" "*llama*" -d "$BIN_DIR" 2>/dev/null || unzip -q -o "$LLAMA_ZIP" -d "$BIN_DIR" 2>/dev/null || true
         else
             python3 -c "
 import zipfile, os, shutil
 with zipfile.ZipFile('$LLAMA_ZIP') as z:
-    for m in z.namelist():
-        if os.path.basename(m) == 'llama-server':
-            with z.open(m) as src, open('$BIN_DIR/llama-server', 'wb') as dst:
+    for m in z.infolist():
+        if m.is_dir():
+            continue
+        fname = os.path.basename(m.filename)
+        if fname:
+            with z.open(m) as src, open(os.path.join('$BIN_DIR', fname), 'wb') as dst:
                 shutil.copyfileobj(src, dst)
-            break
 " 2>/dev/null || true
         fi
         rm -f "$LLAMA_ZIP"
         if [ -f "$BIN_DIR/llama-server" ]; then
-            chmod +x "$BIN_DIR/llama-server"
-            cp -f "$BIN_DIR/llama-server" "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
-            chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
-            echo "✅ llama-server installed successfully: $BIN_DIR/llama-server"
+            chmod +x "$BIN_DIR"/* 2>/dev/null || true
+            cp -f "$BIN_DIR"/* "$DATA_BIN_DIR"/ 2>/dev/null || true
+            chmod +x "$DATA_BIN_DIR"/* 2>/dev/null || true
+            echo "✅ Complete AI engine suite installed successfully in: $BIN_DIR"
         fi
     else
-        echo "⚠️ Could not download pre-built llama-server automatically. It can be provided or configured in-app."
+        echo "⚠️ Could not download pre-built engine suite automatically. It can be provided or configured in-app."
     fi
 else
-    echo "• llama-server is already installed."
-    cp -f "$BIN_DIR/llama-server" "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
-    chmod +x "$DATA_BIN_DIR/llama-server" 2>/dev/null || true
+    echo "• Local AI engine suite is already installed."
+    cp -f "$BIN_DIR"/* "$DATA_BIN_DIR"/ 2>/dev/null || true
+    chmod +x "$BIN_DIR"/* "$DATA_BIN_DIR"/* 2>/dev/null || true
 fi
 
 # Mark setup as completely and successfully finished

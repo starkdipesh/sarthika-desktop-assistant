@@ -57,6 +57,10 @@ IF NOT EXIST ".setup_complete" (
     echo ==================================================================
 )
 
+REM Ensure local bin directories are in PATH for llama-server DLLs
+IF EXIST "%~dp0bin" SET "PATH=%~dp0bin;%PATH%"
+IF EXIST "%LOCALAPPDATA%\sarthika_code\bin" SET "PATH=%LOCALAPPDATA%\sarthika_code\bin;%PATH%"
+
 IF EXIST ".venv\Scripts\pythonw.exe" (
     start "" ".venv\Scripts\pythonw.exe" "run.py" %*
 ) ELSE (
